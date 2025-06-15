@@ -505,6 +505,62 @@
         let currentUxTexts = [];
         let supportedLanguages = {};
 
+        // 이벤트 리스너 등록
+        if (languageSelectElement) {
+          languageSelectElement.addEventListener("change", (e) => {
+            const selectedLanguage = e.target.value;
+            console.log("🌐 언어 선택됨:", selectedLanguage);
+
+            // 번역 버튼 활성화/비활성화
+            if (translateBtnElement) {
+              translateBtnElement.disabled = !selectedLanguage;
+              console.log(
+                "🔘 번역 버튼 상태:",
+                selectedLanguage ? "활성화" : "비활성화"
+              );
+            }
+          });
+        }
+
+        if (translateBtnElement) {
+          translateBtnElement.addEventListener("click", () => {
+            const selectedLanguage = languageSelectElement?.value;
+            console.log("🚀 번역 버튼 클릭, 선택된 언어:", selectedLanguage);
+
+            if (!selectedLanguage) {
+              console.error("❌ 언어가 선택되지 않았습니다");
+              return;
+            }
+
+            // 번역 요청 전송
+            parent.postMessage(
+              {
+                pluginMessage: {
+                  type: "translate-texts",
+                  targetLanguage: selectedLanguage,
+                },
+              },
+              "*"
+            );
+          });
+        }
+
+        if (refreshBtnElement) {
+          refreshBtnElement.addEventListener("click", () => {
+            console.log("🔄 새로고침 버튼 클릭");
+
+            // 텍스트 다시 요청
+            parent.postMessage(
+              {
+                pluginMessage: {
+                  type: "get-texts",
+                },
+              },
+              "*"
+            );
+          });
+        }
+
         // 테스트 데이터 즉시 표시
         if (textListElement) {
           textListElement.innerHTML = `

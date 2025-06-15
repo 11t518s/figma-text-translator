@@ -327,28 +327,55 @@ async function translateAndApplyTexts(
   textNodes: TextNodeInfo[],
   targetLanguage: string
 ) {
+  console.log(`🌐 번역 시작: ${targetLanguage}, 노드 수: ${textNodes.length}`);
+
   for (const textInfo of textNodes) {
     try {
       // 폰트 로드 (필요한 경우)
       await figma.loadFontAsync(textInfo.node.fontName as FontName);
 
-      // 번역 수행
-      const translatedText = mockTranslate(textInfo.content, targetLanguage);
+      // 현재 노드의 실제 텍스트 가져오기
+      const currentText = textInfo.node.characters;
+      console.log(`📝 번역 대상: "${currentText}"`);
+
+      // 원본 텍스트가 저장되어 있지 않다면 현재 텍스트를 저장
+      if (!textInfo.node.getPluginData("originalText")) {
+        textInfo.node.setPluginData(
+          "originalText",
+          textInfo.originalContent || currentText
+        );
+        console.log(
+          `💾 원본 텍스트 저장: "${textInfo.originalContent || currentText}"`
+        );
+      }
+
+      // 번역 수행 (현재 텍스트 기준)
+      const translatedText = mockTranslate(currentText, targetLanguage);
+      console.log(`🔄 번역 결과: "${currentText}" → "${translatedText}"`);
 
       // 텍스트 적용
       textInfo.node.characters = translatedText;
+
+      // 번역된 상태임을 표시
+      textInfo.node.setPluginData("isTranslated", "true");
+      textInfo.node.setPluginData("translatedLanguage", targetLanguage);
+
+      console.log(`✅ 번역 적용 완료: ${textInfo.id}`);
     } catch (error) {
-      console.error(`텍스트 번역 실패 (ID: ${textInfo.id}):`, error);
+      console.error(`❌ 텍스트 번역 실패 (ID: ${textInfo.id}):`, error);
     }
   }
+
+  console.log(`🎉 전체 번역 완료!`);
 }
 
 // UI 시작 - 에러 핸들링 추가
 try {
   figma.showUI(__html__, {
-    width: 800,
-    height: 900,
+    width: 1000,
+    height: 800,
     themeColors: true,
+
   });
   console.log("UI가 성공적으로 시작되었습니다");
 } catch (error) {
@@ -468,9 +495,23 @@ figma.ui.onmessage = async (msg: any) => {
       }
     } else if (msg.type === "translate-texts") {
       const { targetLanguage } = msg;
+      console.log(`🌐 번역 요청 받음: ${targetLanguage}`);
+
+      if (!targetLanguage) {
+        console.error("❌ 대상 언어가 지정되지 않았습니다");
+        figma.notify("언어를 선택해주세요!");
+        return;
+      }
 
       // 모든 텍스트 노드 다시 수집 (변경 사항 반영)
       const textNodes = collectAllTextNodes();
+      console.log(`📊 수집된 텍스트 노드: ${textNodes.length}개`);
+
+      if (textNodes.length === 0) {
+        console.log("⚠️ 번역할 텍스트가 없습니다");
+        figma.notify("번역할 텍스트가 없습니다!");
+        return;
+      }
 
       // 번역 및 적용
       await translateAndApplyTexts(textNodes, targetLanguage);
@@ -481,11 +522,10 @@ figma.ui.onmessage = async (msg: any) => {
         language: SUPPORTED_LANGUAGES[targetLanguage] || targetLanguage,
       });
 
-      figma.notify(
-        `${
-          SUPPORTED_LANGUAGES[targetLanguage] || targetLanguage
-        }로 번역이 완료되었습니다!`
-      );
+      const languageName =
+        SUPPORTED_LANGUAGES[targetLanguage] || targetLanguage;
+      console.log(`🎉 번역 완료 알림: ${languageName}`);
+      figma.notify(`${languageName}로 번역이 완료되었습니다!`);
     } else if (msg.type === "close") {
       figma.closePlugin();
     } else if (msg.type === "ui-test-message") {
