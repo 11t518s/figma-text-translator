@@ -49,6 +49,39 @@
         padding: 16px;
       }
 
+      .main-content {
+        display: flex;
+        gap: 16px;
+        height: 400px;
+      }
+
+      .left-panel,
+      .right-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e5e7eb;
+      }
+
+      .panel-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #374151;
+      }
+
+      .panel-subtitle {
+        font-size: 10px;
+        color: #6b7280;
+      }
+
       .section {
         margin-bottom: 24px;
       }
@@ -64,24 +97,97 @@
         background: #f9fafb;
         border: 1px solid #e5e7eb;
         border-radius: 6px;
-        max-height: 200px;
+        flex: 1;
         overflow-y: auto;
         padding: 8px;
       }
 
       .text-item {
-        padding: 6px 8px;
-        margin-bottom: 4px;
+        padding: 8px 12px;
+        margin-bottom: 6px;
         background: white;
         border-radius: 4px;
         font-size: 11px;
-        color: #6b7280;
+        color: #374151;
         border-left: 3px solid #e5e7eb;
         word-break: break-all;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+      }
+
+      .text-item:hover {
+        border-left-color: #4f46e5;
+        background: #f8fafc;
       }
 
       .text-item:last-child {
         margin-bottom: 0;
+      }
+
+      .text-item.active {
+        border-left-color: #4f46e5;
+        background: #eef2ff;
+      }
+
+      .text-item.changed {
+        border-left-color: #10b981;
+        background: #f0fdf4;
+      }
+
+      .text-item-badge {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: #4f46e5;
+        color: white;
+        font-size: 8px;
+        padding: 2px 4px;
+        border-radius: 2px;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .text-item.changed .text-item-badge {
+        opacity: 1;
+        background: #10b981;
+      }
+
+      .ux-writing-list {
+        background: #fefefe;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+      }
+
+      .ux-item {
+        padding: 8px 12px;
+        margin-bottom: 6px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #374151;
+        border-left: 3px solid #fbbf24;
+        word-break: break-all;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+      }
+
+      .ux-item:hover {
+        border-left-color: #f59e0b;
+        background: #fffbeb;
+      }
+
+      .ux-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .ux-item.active {
+        border-left-color: #f59e0b;
+        background: #fffbeb;
       }
 
       .language-selector {
@@ -217,257 +323,317 @@
       </div>
 
       <div class="content">
-        <div class="section">
-          <h2>발견된 텍스트</h2>
-          <div id="textList" class="text-list">
-            <div class="empty-state">
-              <div class="icon">📝</div>
-              <div>텍스트를 검색하는 중...</div>
+        <div class="main-content">
+          <div class="left-panel">
+            <div class="section">
+              <h2>발견된 텍스트</h2>
+              <div id="textList" class="text-list">
+                <div class="empty-state">
+                  <div class="icon">📝</div>
+                  <div>텍스트를 검색하는 중...</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section">
+              <div class="language-selector">
+                <label for="languageSelect">번역할 언어 선택</label>
+                <select id="languageSelect">
+                  <option value="">언어를 선택하세요</option>
+                </select>
+              </div>
+
+              <div class="button-group">
+                <button id="refreshBtn" class="btn btn-secondary">
+                  🔄 텍스트 새로고침
+                </button>
+                <button id="translateBtn" class="btn btn-primary" disabled>
+                  🌐 번역하기
+                </button>
+              </div>
+
+              <div id="loading" class="loading">
+                <div class="spinner"></div>
+                번역 중입니다...
+              </div>
+
+              <div id="status" class="status"></div>
             </div>
           </div>
-        </div>
 
-        <div class="section">
-          <div class="language-selector">
-            <label for="languageSelect">번역할 언어 선택</label>
-            <select id="languageSelect">
-              <option value="">언어를 선택하세요</option>
-            </select>
+          <div class="right-panel">
+            <div class="section">
+              <h2>UX Writing</h2>
+              <div id="uxWritingList" class="ux-writing-list">
+                <div class="empty-state">
+                  <div class="icon">📝</div>
+                  <div>UX Writing을 검색하는 중...</div>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <div class="button-group">
-            <button id="refreshBtn" class="btn btn-secondary">
-              🔄 텍스트 새로고침
-            </button>
-            <button id="translateBtn" class="btn btn-primary" disabled>
-              🌐 번역하기
-            </button>
-          </div>
-
-          <div id="loading" class="loading">
-            <div class="spinner"></div>
-            번역 중입니다...
-          </div>
-
-          <div id="status" class="status"></div>
         </div>
       </div>
     </div>
 
+    <!-- UI 로직은 ui.js에서 처리됩니다 -->
     <script>
-      console.log("=== HTML 인라인 스크립트 실행 ===");
-      console.log("window.location:", window.location.href);
-      console.log("document.readyState:", document.readyState);
+      console.log("🧪 HTML에서 ui.js 로드 시도 전");
+    </script>
+    <script>
+      // ui.js 내용을 인라인으로 포함
+      "use strict";
+      console.log("🚀 UI 스크립트 로드됨 (인라인)");
+      console.log("📅 현재 시간:", new Date().toISOString());
+      console.log("🌐 User Agent:", navigator.userAgent);
 
-      // 기본 DOM 체크
+      // DOM이 완전히 로드되었는지 확인
       document.addEventListener("DOMContentLoaded", function () {
-        console.log("DOMContentLoaded 이벤트 발생");
-        const textList = document.getElementById("textList");
-        console.log("textList 요소:", textList);
-
-        if (textList) {
-          textList.innerHTML =
-            '<div style="color: red; font-weight: bold;">🔥 HTML 스크립트 실행됨!</div>';
-        }
-
-        // 번역 버튼 이벤트 리스너
-        const translateBtn = document.getElementById("translateBtn");
-        const languageSelect = document.getElementById("languageSelect");
-
-        if (translateBtn) {
-          translateBtn.addEventListener("click", function () {
-            const selectedLanguage = languageSelect.value;
-            if (selectedLanguage === "") {
-              alert("언어를 선택해주세요!");
-              return;
-            }
-            console.log("번역 버튼 클릭, 선택된 언어:", selectedLanguage);
-            performTranslation(selectedLanguage);
-          });
-        }
-
-        // 언어 선택 변경 시 버튼 활성화/비활성화
-        if (languageSelect) {
-          languageSelect.addEventListener("change", function () {
-            if (translateBtn) {
-              translateBtn.disabled = this.value === "";
-            }
-          });
-        }
-
-        // 새로고침 버튼 이벤트
-        const refreshBtn = document.getElementById("refreshBtn");
-        if (refreshBtn) {
-          refreshBtn.addEventListener("click", function () {
-            console.log("새로고침 버튼 클릭");
-            parent.postMessage(
-              {
-                pluginMessage: { type: "get-texts" },
-              },
-              "*"
-            );
-          });
-        }
+        console.log("📋 DOMContentLoaded 이벤트 발생");
       });
 
-      // 메시지 리스너 테스트
-      window.addEventListener("message", function (event) {
-        console.log("=== HTML에서 메시지 수신 ===", event.data);
+      // 즉시 실행하여 연결 확인
+      setTimeout(() => {
+        console.log("⚡ ui.js 스크립트가 정상적으로 실행되고 있습니다!");
 
-        // 실제 텍스트 업데이트 처리
-        if (event.data.pluginMessage) {
-          const { type, texts, languages } = event.data.pluginMessage;
-          console.log(
-            "✅ 메시지 타입:",
-            type,
-            "텍스트 개수:",
-            texts ? texts.length : 0
-          );
+        // DOM 요소들이 존재하는지 확인
+        const testElements = [
+          "textList",
+          "uxWritingList",
+          "languageSelect",
+          "refreshBtn",
+          "translateBtn",
+        ];
 
-          if (type === "initial-texts" || type === "texts-collected") {
-            console.log("🔥 HTML에서 직접 텍스트 업데이트");
-            updateTextListInHTML(texts);
-            if (languages) {
-              updateLanguageOptionsInHTML(languages);
-            }
-          } else if (type === "translation-complete") {
-            console.log("🎉 번역 완료!");
-            alert(language + "로 번역이 완료되었습니다!");
-            // 번역 후 텍스트 다시 가져오기
-            parent.postMessage(
-              {
-                pluginMessage: { type: "get-texts" },
-              },
-              "*"
-            );
-          }
-        }
-      });
-
-      // 번역 함수 (나중에 OpenAI로 교체 예정)
-      function translateText(text, targetLanguage) {
-        // 현재는 간단하게 언어명으로 변경
-        const languageNames = {
-          ko: "한국어",
-          en: "English",
-          ja: "日本語",
-          zh: "中文",
-          es: "Español",
-          fr: "Français",
-          de: "Deutsch",
-        };
-
-        return languageNames[targetLanguage] || targetLanguage;
-      }
-
-      // HTML에서 직접 텍스트 업데이트 함수
-      function updateTextListInHTML(texts) {
-        console.log("🔍 updateTextListInHTML 호출됨, texts:", texts);
-
-        window.currentTexts = texts; // 전역 변수로 저장
-        const textListElement = document.getElementById("textList");
-
-        console.log("🔍 textListElement:", textListElement);
-        console.log(
-          "🔍 textListElement.innerHTML (before):",
-          textListElement ? textListElement.innerHTML : "null"
-        );
-
-        if (!textListElement) {
-          console.error("❌ textList 요소를 찾을 수 없습니다!");
-          return;
-        }
-
-        if (!texts) {
-          console.error("❌ texts 데이터가 없습니다!");
-          return;
-        }
-
-        if (texts.length === 0) {
-          textListElement.innerHTML = "<div>텍스트가 없습니다</div>";
-          console.log("🔍 빈 텍스트 메시지 설정됨");
-          return;
-        }
-
-        const textItems = texts
-          .map((text, index) => {
-            console.log(`🔍 텍스트 ${index}:`, text);
-            const truncated =
-              text.content.length > 50
-                ? text.content.substring(0, 50) + "..."
-                : text.content;
-            return `<div class="text-item">📝 ${truncated}</div>`;
-          })
-          .join("");
-
-        console.log("🔍 생성된 HTML:", textItems);
-        textListElement.innerHTML = textItems;
-        console.log(
-          "🔍 textListElement.innerHTML (after):",
-          textListElement.innerHTML
-        );
-
-        console.log(
-          "🔥 HTML에서 DOM 업데이트 완료, 텍스트 개수:",
-          texts.length
-        );
-      }
-
-      // 언어 옵션 업데이트
-      function updateLanguageOptionsInHTML(languages) {
-        const languageSelect = document.getElementById("languageSelect");
-        if (!languageSelect || !languages) return;
-
-        // 기존 옵션 제거 (첫 번째 기본 옵션 제외)
-        while (languageSelect.children.length > 1) {
-          languageSelect.removeChild(languageSelect.lastChild);
-        }
-
-        // 새 언어 옵션 추가
-        Object.entries(languages).forEach(([code, name]) => {
-          const option = document.createElement("option");
-          option.value = code;
-          option.textContent = name;
-          languageSelect.appendChild(option);
+        testElements.forEach((id) => {
+          const element = document.getElementById(id);
+          console.log(`🔍 ${id}:`, element ? "✅ 존재" : "❌ 없음");
         });
 
-        console.log("🔥 HTML에서 언어 옵션 업데이트 완료");
-      }
+        // 실제 초기화 시작
+        initializeUI();
+      }, 100);
 
-      // 번역 실행 함수
-      function performTranslation(targetLanguage) {
-        if (!window.currentTexts || !targetLanguage) {
-          alert("텍스트나 언어가 선택되지 않았습니다.");
-          return;
+      // UI 초기화 함수
+      function initializeUI() {
+        console.log("🎯 UI 초기화 시작");
+
+        // UI 요소들 찾기
+        const textListElement = document.getElementById("textList");
+        const uxWritingListElement = document.getElementById("uxWritingList");
+        const languageSelectElement = document.getElementById("languageSelect");
+        const refreshBtnElement = document.getElementById("refreshBtn");
+        const translateBtnElement = document.getElementById("translateBtn");
+        const loadingElement = document.getElementById("loading");
+        const statusElement = document.getElementById("status");
+
+        console.log("🔍 DOM 요소 찾기 결과:");
+        console.log("  textListElement:", !!textListElement);
+        console.log("  uxWritingListElement:", !!uxWritingListElement);
+        console.log("  languageSelectElement:", !!languageSelectElement);
+
+        // 상태 관리
+        let currentTexts = [];
+        let currentUxTexts = [];
+        let supportedLanguages = {};
+
+        // 테스트 데이터 즉시 표시
+        if (textListElement) {
+          textListElement.innerHTML = `
+            <div style="padding: 10px; background: yellow; margin: 5px;">
+              🧪 왼쪽 패널 작동 확인! 곧 실제 데이터로 업데이트됩니다.
+            </div>
+          `;
         }
 
-        console.log("🔄 번역 시작:", targetLanguage);
+        if (uxWritingListElement) {
+          uxWritingListElement.innerHTML = `
+            <div style="padding: 10px; background: lightblue; margin: 5px;">
+              🧪 오른쪽 패널 작동 확인! UX 라이팅 데이터를 기다리는 중...
+            </div>
+          `;
+        }
 
-        // 플러그인에게 번역 요청 메시지 전송
-        parent.postMessage(
-          {
-            pluginMessage: {
-              type: "translate-texts",
-              targetLanguage: targetLanguage,
+        // 메시지 리스너 등록
+        window.onmessage = (event) => {
+          console.log("🟡 UI에서 메시지 받음:", event);
+
+          if (!event.data.pluginMessage) {
+            console.log("❌ pluginMessage 없음, 무시");
+            return;
+          }
+
+          const { type, texts, uxTexts, languages, language } =
+            event.data.pluginMessage;
+          console.log("✅ UI 메시지 처리:", type);
+          console.log("📊 데이터:", {
+            textsCount: texts?.length,
+            uxTextsCount: uxTexts?.length,
+          });
+
+          switch (type) {
+            case "initial-texts":
+            case "texts-collected":
+              console.log("🔄 텍스트와 언어 업데이트");
+
+              if (texts && Array.isArray(texts)) {
+                console.log("📝 텍스트 데이터:", texts);
+                updateOriginalTextList(texts);
+              } else {
+                console.error("❌ texts가 배열이 아님:", texts);
+              }
+
+              if (languages) {
+                console.log("🌐 언어 데이터:", languages);
+                updateLanguageOptions(languages);
+              }
+              break;
+
+            case "ux-texts-ready":
+              console.log("🔄 UX 라이팅 준비 완료");
+
+              if (uxTexts && Array.isArray(uxTexts)) {
+                console.log("📝 UX 텍스트 데이터:", uxTexts);
+                updateUxWritingList(uxTexts);
+              } else {
+                console.error("❌ uxTexts가 배열이 아님:", uxTexts);
+              }
+              break;
+
+            case "translation-complete":
+              console.log("🎉 번역 완료!");
+              break;
+
+            default:
+              console.log("🔄 알 수 없는 메시지 타입:", type);
+              break;
+          }
+        };
+
+        // 함수들 정의
+        function updateOriginalTextList(texts) {
+          console.log("📝 원본 텍스트 목록 업데이트, 개수:", texts.length);
+          currentTexts = texts;
+
+          if (!textListElement) {
+            console.error("❌ textListElement가 없습니다!");
+            return;
+          }
+
+          if (texts.length === 0) {
+            textListElement.innerHTML = `
+              <div class="empty-state">
+                <div class="icon">🤔</div>
+                <div>텍스트가 발견되지 않았습니다</div>
+              </div>
+            `;
+            return;
+          }
+
+          const textItems = texts
+            .map((text, index) => {
+              const truncatedContent =
+                text.content.length > 50
+                  ? text.content.substring(0, 50) + "..."
+                  : text.content;
+
+              return `
+              <div class="text-item" data-id="${
+                text.id
+              }" data-index="${index}" title="${text.content.replace(
+                /"/g,
+                "&quot;"
+              )}">
+                ${truncatedContent || "[빈 텍스트]"}
+              </div>
+            `;
+            })
+            .join("");
+
+          textListElement.innerHTML = textItems;
+          console.log("✅ 원본 텍스트 목록 업데이트 완료");
+        }
+
+        function updateUxWritingList(uxTexts) {
+          console.log("📝 UX 라이팅 목록 업데이트, 개수:", uxTexts.length);
+          currentUxTexts = uxTexts;
+
+          if (!uxWritingListElement) {
+            console.error("❌ uxWritingListElement가 없습니다!");
+            return;
+          }
+
+          if (uxTexts.length === 0) {
+            uxWritingListElement.innerHTML = `
+              <div class="empty-state">
+                <div class="icon">📝</div>
+                <div>UX Writing을 생성하는 중...</div>
+              </div>
+            `;
+            return;
+          }
+
+          const uxItems = uxTexts
+            .map((text, index) => {
+              const truncatedContent =
+                text.uxContent.length > 50
+                  ? text.uxContent.substring(0, 50) + "..."
+                  : text.uxContent;
+
+              return `
+              <div class="ux-item" data-id="${
+                text.id
+              }" data-index="${index}" title="${text.uxContent.replace(
+                /"/g,
+                "&quot;"
+              )}">
+                ${truncatedContent || "[빈 텍스트]"}
+              </div>
+            `;
+            })
+            .join("");
+
+          uxWritingListElement.innerHTML = uxItems;
+          console.log("✅ UX 라이팅 목록 업데이트 완료");
+        }
+
+        function updateLanguageOptions(languages) {
+          supportedLanguages = languages;
+
+          if (!languageSelectElement) return;
+
+          // 기존 옵션 제거 (첫 번째 기본 옵션 제외)
+          while (languageSelectElement.children.length > 1) {
+            languageSelectElement.removeChild(languageSelectElement.lastChild);
+          }
+
+          // 새 언어 옵션 추가
+          Object.entries(languages).forEach(([code, name]) => {
+            const option = document.createElement("option");
+            option.value = code;
+            option.textContent = name;
+            languageSelectElement.appendChild(option);
+          });
+        }
+
+        // 초기화: 플러그인에 텍스트 요청
+        setTimeout(() => {
+          console.log("📤 초기 텍스트 요청 전송");
+          parent.postMessage(
+            {
+              pluginMessage: {
+                type: "get-texts",
+              },
             },
-          },
-          "*"
-        );
+            "*"
+          );
+        }, 100);
+
+        console.log("🎯 UI 초기화 완료");
       }
-
-      // 부모에게 테스트 메시지 보내기
-      setTimeout(function () {
-        console.log("부모에게 테스트 메시지 전송");
-        parent.postMessage(
-          {
-            pluginMessage: {
-              type: "ui-test-message",
-            },
-          },
-          "*"
-        );
-      }, 1000);
     </script>
-    <script src="dist/ui.js"></script>
+    <script>
+      console.log("🧪 HTML에서 ui.js 로드 시도 후");
+    </script>
   </body>
 </html>
