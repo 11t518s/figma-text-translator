@@ -188,6 +188,35 @@
         opacity: 1;
       }
 
+      .text-item.highlighted,
+      .ux-item.highlighted {
+        border-left-color: #ef4444 !important;
+        background: #fef2f2 !important;
+        box-shadow: 0 0 0 2px #ef4444, 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+        transform: scale(1.02);
+        animation: highlight-pulse 0.6s ease-in-out;
+      }
+
+      .text-item.nearest-highlighted,
+      .ux-item.nearest-highlighted {
+        border-left-color: #f59e0b !important;
+        background: #fffbeb !important;
+        box-shadow: 0 0 0 2px #f59e0b, 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+        transform: scale(1.01);
+      }
+
+      @keyframes highlight-pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1.02);
+        }
+      }
+
       .ux-writing-list {
         background: #fefefe;
         border: 1px solid #e5e7eb;
@@ -628,6 +657,12 @@
               console.log("🎉 번역 완료!");
               break;
 
+            case "text-selected":
+              console.log("🎯 텍스트 선택됨:", event.data.pluginMessage);
+              const { nodeId, content, isNearest } = event.data.pluginMessage;
+              highlightAndScrollToText(nodeId, isNearest);
+              break;
+
             default:
               console.log("🔄 알 수 없는 메시지 타입:", type);
               break;
@@ -793,6 +828,56 @@
           const activeItem = document.querySelector(selector);
           if (activeItem) {
             activeItem.classList.add("active");
+          }
+        }
+
+        // 텍스트 하이라이트 및 스크롤 함수
+        function highlightAndScrollToText(nodeId, isNearest = false) {
+          console.log(
+            `🎯 텍스트 하이라이트 요청: ${nodeId}, 가장 가까운 텍스트: ${isNearest}`
+          );
+
+          // 모든 하이라이트 제거
+          document.querySelectorAll(".text-item, .ux-item").forEach((item) => {
+            item.classList.remove("highlighted", "nearest-highlighted");
+          });
+
+          // 해당 텍스트 쌍 찾기
+          const textItem = document.querySelector(
+            `.text-item[data-id="${nodeId}"]`
+          );
+          const uxItem = document.querySelector(
+            `.ux-item[data-id="${nodeId}"]`
+          );
+
+          if (textItem && uxItem) {
+            // 하이라이트 클래스 추가
+            const highlightClass = isNearest
+              ? "nearest-highlighted"
+              : "highlighted";
+            textItem.classList.add(highlightClass);
+            uxItem.classList.add(highlightClass);
+
+            // 텍스트 쌍 컨테이너로 스크롤
+            const textPair = textItem.closest(".text-pair");
+            if (textPair) {
+              textPair.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+
+              console.log(`✅ 텍스트로 스크롤 완료: ${nodeId}`);
+
+              // 잠시 후 하이라이트 효과 제거 (가장 가까운 텍스트가 아닌 경우)
+              if (!isNearest) {
+                setTimeout(() => {
+                  textItem.classList.remove("highlighted");
+                  uxItem.classList.remove("highlighted");
+                }, 3000);
+              }
+            }
+          } else {
+            console.warn(`⚠️ 텍스트를 찾을 수 없습니다: ${nodeId}`);
           }
         }
 

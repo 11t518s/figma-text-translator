@@ -375,7 +375,6 @@ try {
     width: 1000,
     height: 800,
     themeColors: true,
-
   });
   console.log("UI가 성공적으로 시작되었습니다");
 } catch (error) {
@@ -577,4 +576,82 @@ try {
   }
 } catch (error) {
   console.error("초기 텍스트 수집 오류:", error);
+}
+
+// 선택 변경 이벤트 리스너 추가
+figma.on("selectionchange", () => {
+  const selection = figma.currentPage.selection;
+  console.log(`🎯 선택 변경됨: ${selection.length}개 요소`);
+
+  if (selection.length === 1) {
+    const selectedNode = selection[0];
+
+    // 선택된 노드가 텍스트 노드인지 확인
+    if (selectedNode.type === "TEXT") {
+      const textNode = selectedNode as TextNode;
+      console.log(
+        `📝 텍스트 노드 선택됨: "${textNode.characters}" (ID: ${textNode.id})`
+      );
+
+      // UI에 선택된 텍스트 정보 전송
+      figma.ui.postMessage({
+        type: "text-selected",
+        nodeId: textNode.id,
+        content: textNode.characters,
+      });
+    } else {
+      // 텍스트가 아닌 노드가 선택된 경우, 가장 가까운 텍스트 노드 찾기
+      const nearestTextNode = findNearestTextNode(selectedNode);
+      if (nearestTextNode) {
+        console.log(
+          `🔍 가장 가까운 텍스트 노드 찾음: "${nearestTextNode.characters}" (ID: ${nearestTextNode.id})`
+        );
+
+        // UI에 가장 가까운 텍스트 정보 전송
+        figma.ui.postMessage({
+          type: "text-selected",
+          nodeId: nearestTextNode.id,
+          content: nearestTextNode.characters,
+          isNearest: true,
+        });
+      }
+    }
+  }
+});
+
+// 가장 가까운 텍스트 노드를 찾는 함수
+function findNearestTextNode(selectedNode: SceneNode): TextNode | null {
+  let nearestTextNode: TextNode | null = null;
+  let minDistance = Infinity;
+
+  // 선택된 노드의 중심점 계산
+  const selectedCenter = {
+    x: selectedNode.x + selectedNode.width / 2,
+    y: selectedNode.y + selectedNode.height / 2,
+  };
+
+  // 모든 텍스트 노드와의 거리 계산
+  const allTextNodes = collectAllTextNodes();
+
+  for (const textInfo of allTextNodes) {
+    const textNode = textInfo.node;
+    const textCenter = {
+      x: textNode.x + textNode.width / 2,
+      y: textNode.y + textNode.height / 2,
+    };
+
+    // 유클리드 거리 계산
+    const distance = Math.sqrt(
+      Math.pow(selectedCenter.x - textCenter.x, 2) +
+        Math.pow(selectedCenter.y - textCenter.y, 2)
+    );
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestTextNode = textNode;
+    }
+  }
+
+  console.log(`🎯 가장 가까운 텍스트까지의 거리: ${minDistance.toFixed(2)}px`);
+  return nearestTextNode;
 }
