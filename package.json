@@ -1,0 +1,15 @@
+{
+  "name": "figma-text-translator",
+  "version": "1.0.0",
+  "description": "Figma 텍스트 번역 플러그인",
+  "main": "code.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.88.0",
+    "typescript": "^5.0.0"
+  }
+}
