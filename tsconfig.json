@@ -8,7 +8,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "typeRoots": ["./node_modules/@types", "./node_modules/@figma"]
+    "typeRoots": ["./node_modules/@types", "./node_modules/@figma"],
+    "moduleResolution": "node"
   },
   "include": ["*.ts"],
   "exclude": ["node_modules", "dist"]

@@ -13,6 +13,25 @@ interface TranslationResponse {
 }
 
 /**
+ * 모킹 번역 함수 (실제 OpenAI API 대신 사용)
+ * API 키가 없을 때 사용되는 기본 번역 로직
+ */
+export function mockTranslate(text: string, targetLanguage: string): string {
+  // 사용자 요청: 간단하게 언어명으로 바뀌게 하기
+  const languageNames: { [key: string]: string } = {
+    ko: "한국어",
+    en: "English",
+    ja: "日本語",
+    zh: "中文",
+    es: "Español",
+    fr: "Français",
+    de: "Deutsch",
+  };
+
+  return languageNames[targetLanguage] || targetLanguage;
+}
+
+/**
  * OpenAI API를 사용하여 텍스트를 번역합니다
  * @param apiKey OpenAI API 키
  * @param request 번역 요청 정보

@@ -51,15 +51,28 @@
 
       .main-content {
         display: flex;
-        gap: 16px;
-        height: 400px;
+        flex-direction: column;
+        height: 750px;
+        min-height: 600px;
       }
 
-      .left-panel,
-      .right-panel {
+      .text-pair-container {
         flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+      }
+
+      .text-pair {
         display: flex;
-        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 12px;
+        align-items: stretch;
+      }
+
+      .text-pair .text-item,
+      .text-pair .ux-item {
+        flex: 1;
+        margin-bottom: 0;
       }
 
       .panel-header {
@@ -99,26 +112,30 @@
         border-radius: 6px;
         flex: 1;
         overflow-y: auto;
+        max-height: 500px;
         padding: 8px;
       }
 
       .text-item {
-        padding: 8px 12px;
-        margin-bottom: 6px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
         background: white;
-        border-radius: 4px;
-        font-size: 11px;
+        border-radius: 6px;
+        font-size: 12px;
         color: #374151;
         border-left: 3px solid #e5e7eb;
         word-break: break-all;
         cursor: pointer;
         transition: all 0.2s;
         position: relative;
+        line-height: 1.4;
       }
 
       .text-item:hover {
         border-left-color: #4f46e5;
         background: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
       .text-item:last-child {
@@ -128,6 +145,7 @@
       .text-item.active {
         border-left-color: #4f46e5;
         background: #eef2ff;
+        box-shadow: 0 2px 8px rgba(79, 70, 229, 0.15);
       }
 
       .text-item.changed {
@@ -137,13 +155,13 @@
 
       .text-item-badge {
         position: absolute;
-        top: 4px;
-        right: 4px;
+        top: 6px;
+        right: 6px;
         background: #4f46e5;
         color: white;
-        font-size: 8px;
-        padding: 2px 4px;
-        border-radius: 2px;
+        font-size: 9px;
+        padding: 3px 6px;
+        border-radius: 3px;
         opacity: 0;
         transition: opacity 0.2s;
       }
@@ -153,32 +171,40 @@
         background: #10b981;
       }
 
+      .text-item.active .text-item-badge {
+        opacity: 1;
+      }
+
       .ux-writing-list {
         background: #fefefe;
         border: 1px solid #e5e7eb;
         border-radius: 6px;
         flex: 1;
         overflow-y: auto;
+        max-height: 700px;
         padding: 8px;
       }
 
       .ux-item {
-        padding: 8px 12px;
-        margin-bottom: 6px;
+        padding: 12px 16px;
+        margin-bottom: 8px;
         background: #f8f9fa;
-        border-radius: 4px;
-        font-size: 11px;
+        border-radius: 6px;
+        font-size: 12px;
         color: #374151;
         border-left: 3px solid #fbbf24;
         word-break: break-all;
         cursor: pointer;
         transition: all 0.2s;
         position: relative;
+        line-height: 1.4;
       }
 
       .ux-item:hover {
         border-left-color: #f59e0b;
         background: #fffbeb;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
       .ux-item:last-child {
@@ -188,6 +214,7 @@
       .ux-item.active {
         border-left-color: #f59e0b;
         background: #fffbeb;
+        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
       }
 
       .language-selector {
@@ -313,6 +340,28 @@
         font-size: 24px;
         margin-bottom: 8px;
       }
+
+      .text-list::-webkit-scrollbar,
+      .ux-writing-list::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .text-list::-webkit-scrollbar-track,
+      .ux-writing-list::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+      }
+
+      .text-list::-webkit-scrollbar-thumb,
+      .ux-writing-list::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+
+      .text-list::-webkit-scrollbar-thumb:hover,
+      .ux-writing-list::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
     </style>
   </head>
   <body>
@@ -324,53 +373,54 @@
 
       <div class="content">
         <div class="main-content">
-          <div class="left-panel">
-            <div class="section">
-              <h2>발견된 텍스트</h2>
-              <div id="textList" class="text-list">
-                <div class="empty-state">
-                  <div class="icon">📝</div>
-                  <div>텍스트를 검색하는 중...</div>
-                </div>
+          <div class="section">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+              "
+            >
+              <div style="display: flex; gap: 20px">
+                <h2 style="color: #4f46e5">원본 텍스트</h2>
+                <h2 style="color: #f59e0b">UX Writing</h2>
+              </div>
+              <div style="font-size: 11px; color: #6b7280">
+                클릭하여 텍스트 적용
               </div>
             </div>
-
-            <div class="section">
-              <div class="language-selector">
-                <label for="languageSelect">번역할 언어 선택</label>
-                <select id="languageSelect">
-                  <option value="">언어를 선택하세요</option>
-                </select>
+            <div id="textPairContainer" class="text-pair-container">
+              <div class="empty-state">
+                <div class="icon">🔍</div>
+                <div>텍스트를 검색하는 중...</div>
               </div>
-
-              <div class="button-group">
-                <button id="refreshBtn" class="btn btn-secondary">
-                  🔄 텍스트 새로고침
-                </button>
-                <button id="translateBtn" class="btn btn-primary" disabled>
-                  🌐 번역하기
-                </button>
-              </div>
-
-              <div id="loading" class="loading">
-                <div class="spinner"></div>
-                번역 중입니다...
-              </div>
-
-              <div id="status" class="status"></div>
             </div>
           </div>
 
-          <div class="right-panel">
-            <div class="section">
-              <h2>UX Writing</h2>
-              <div id="uxWritingList" class="ux-writing-list">
-                <div class="empty-state">
-                  <div class="icon">📝</div>
-                  <div>UX Writing을 검색하는 중...</div>
-                </div>
-              </div>
+          <div class="section">
+            <div class="language-selector">
+              <label for="languageSelect">번역할 언어 선택</label>
+              <select id="languageSelect">
+                <option value="">언어를 선택하세요</option>
+              </select>
             </div>
+
+            <div class="button-group">
+              <button id="refreshBtn" class="btn btn-secondary">
+                🔄 텍스트 새로고침
+              </button>
+              <button id="translateBtn" class="btn btn-primary" disabled>
+                🌐 번역하기
+              </button>
+            </div>
+
+            <div id="loading" class="loading">
+              <div class="spinner"></div>
+              번역 중입니다...
+            </div>
+
+            <div id="status" class="status"></div>
           </div>
         </div>
       </div>
@@ -515,13 +565,35 @@
           console.log("📝 원본 텍스트 목록 업데이트, 개수:", texts.length);
           currentTexts = texts;
 
-          if (!textListElement) {
-            console.error("❌ textListElement가 없습니다!");
+          // UX 텍스트가 있으면 함께 업데이트
+          if (currentUxTexts.length > 0) {
+            updateTextPairs(texts, currentUxTexts);
+          }
+        }
+
+        function updateUxWritingList(uxTexts) {
+          console.log("📝 UX 라이팅 목록 업데이트, 개수:", uxTexts.length);
+          currentUxTexts = uxTexts;
+
+          // 원본 텍스트가 있으면 함께 업데이트
+          if (currentTexts.length > 0) {
+            updateTextPairs(currentTexts, uxTexts);
+          }
+        }
+
+        // 새로운 텍스트 쌍 업데이트 함수
+        function updateTextPairs(texts, uxTexts) {
+          console.log("📝 텍스트 쌍 업데이트, 개수:", texts.length);
+
+          const textPairContainer =
+            document.getElementById("textPairContainer");
+          if (!textPairContainer) {
+            console.error("❌ textPairContainer가 없습니다!");
             return;
           }
 
           if (texts.length === 0) {
-            textListElement.innerHTML = `
+            textPairContainer.innerHTML = `
               <div class="empty-state">
                 <div class="icon">🤔</div>
                 <div>텍스트가 발견되지 않았습니다</div>
@@ -530,71 +602,87 @@
             return;
           }
 
-          const textItems = texts
+          const textPairs = texts
             .map((text, index) => {
-              const truncatedContent =
-                text.content.length > 50
-                  ? text.content.substring(0, 50) + "..."
+              const uxText = uxTexts.find((ux) => ux.id === text.id);
+
+              const truncatedOriginal =
+                text.content.length > 40
+                  ? text.content.substring(0, 40) + "..."
                   : text.content;
 
+              const truncatedUx = uxText
+                ? uxText.uxContent.length > 40
+                  ? uxText.uxContent.substring(0, 40) + "..."
+                  : uxText.uxContent
+                : "생성 중...";
+
               return `
-              <div class="text-item" data-id="${
-                text.id
-              }" data-index="${index}" title="${text.content.replace(
-                /"/g,
-                "&quot;"
-              )}">
-                ${truncatedContent || "[빈 텍스트]"}
-              </div>
-            `;
+                <div class="text-pair">
+                  <div class="text-item" data-id="${
+                    text.id
+                  }" data-index="${index}" 
+                       title="${text.content.replace(/"/g, "&quot;")}">
+                    ${truncatedOriginal || "[빈 텍스트]"}
+                  </div>
+                  <div class="ux-item" data-id="${
+                    text.id
+                  }" data-index="${index}" 
+                       title="${
+                         uxText
+                           ? uxText.uxContent.replace(/"/g, "&quot;")
+                           : "생성 중..."
+                       }">
+                    ${truncatedUx}
+                  </div>
+                </div>
+              `;
             })
             .join("");
 
-          textListElement.innerHTML = textItems;
-          console.log("✅ 원본 텍스트 목록 업데이트 완료");
-        }
+          textPairContainer.innerHTML = textPairs;
 
-        function updateUxWritingList(uxTexts) {
-          console.log("📝 UX 라이팅 목록 업데이트, 개수:", uxTexts.length);
-          currentUxTexts = uxTexts;
+          // 클릭 이벤트 추가
+          textPairContainer.addEventListener("click", (e) => {
+            const textItem = e.target.closest(".text-item");
+            const uxItem = e.target.closest(".ux-item");
 
-          if (!uxWritingListElement) {
-            console.error("❌ uxWritingListElement가 없습니다!");
-            return;
-          }
+            if (textItem) {
+              const textId = textItem.dataset.id;
+              console.log("🔄 원본 텍스트 클릭:", textId);
 
-          if (uxTexts.length === 0) {
-            uxWritingListElement.innerHTML = `
-              <div class="empty-state">
-                <div class="icon">📝</div>
-                <div>UX Writing을 생성하는 중...</div>
-              </div>
-            `;
-            return;
-          }
+              parent.postMessage(
+                {
+                  pluginMessage: {
+                    type: "toggle-text",
+                    nodeId: textId,
+                    useUxWriting: false,
+                  },
+                },
+                "*"
+              );
 
-          const uxItems = uxTexts
-            .map((text, index) => {
-              const truncatedContent =
-                text.uxContent.length > 50
-                  ? text.uxContent.substring(0, 50) + "..."
-                  : text.uxContent;
+              updateActiveStates(textId, false);
+            } else if (uxItem) {
+              const textId = uxItem.dataset.id;
+              console.log("🔄 UX Writing 클릭:", textId);
 
-              return `
-              <div class="ux-item" data-id="${
-                text.id
-              }" data-index="${index}" title="${text.uxContent.replace(
-                /"/g,
-                "&quot;"
-              )}">
-                ${truncatedContent || "[빈 텍스트]"}
-              </div>
-            `;
-            })
-            .join("");
+              parent.postMessage(
+                {
+                  pluginMessage: {
+                    type: "toggle-text",
+                    nodeId: textId,
+                    useUxWriting: true,
+                  },
+                },
+                "*"
+              );
 
-          uxWritingListElement.innerHTML = uxItems;
-          console.log("✅ UX 라이팅 목록 업데이트 완료");
+              updateActiveStates(textId, true);
+            }
+          });
+
+          console.log("✅ 텍스트 쌍 업데이트 완료");
         }
 
         function updateLanguageOptions(languages) {
@@ -614,6 +702,24 @@
             option.textContent = name;
             languageSelectElement.appendChild(option);
           });
+        }
+
+        // 활성 상태 업데이트 함수 추가
+        function updateActiveStates(textId, isUxMode) {
+          // 모든 아이템에서 active 클래스 제거
+          document.querySelectorAll(".text-item, .ux-item").forEach((item) => {
+            item.classList.remove("active");
+          });
+
+          // 해당 아이템에 active 클래스 추가
+          const selector = isUxMode
+            ? `.ux-item[data-id="${textId}"]`
+            : `.text-item[data-id="${textId}"]`;
+
+          const activeItem = document.querySelector(selector);
+          if (activeItem) {
+            activeItem.classList.add("active");
+          }
         }
 
         // 초기화: 플러그인에 텍스트 요청
