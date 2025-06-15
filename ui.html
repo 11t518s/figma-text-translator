@@ -17,6 +17,8 @@
         line-height: 1.5;
         background: #f8f9fa;
         padding: 16px;
+        height: 100vh;
+        overflow: hidden;
       }
 
       .container {
@@ -25,6 +27,9 @@
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         overflow: hidden;
+        height: calc(100vh - 32px);
+        display: flex;
+        flex-direction: column;
       }
 
       .header {
@@ -47,19 +52,24 @@
 
       .content {
         padding: 16px;
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
 
       .main-content {
         display: flex;
         flex-direction: column;
-        height: 750px;
-        min-height: 600px;
+        flex: 1;
+        overflow: hidden;
       }
 
       .text-pair-container {
         flex: 1;
         overflow-y: auto;
         padding: 8px;
+        min-height: 0;
       }
 
       .text-pair {
@@ -96,7 +106,10 @@
       }
 
       .section {
-        margin-bottom: 24px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
       }
 
       .section h2 {
@@ -342,24 +355,28 @@
       }
 
       .text-list::-webkit-scrollbar,
-      .ux-writing-list::-webkit-scrollbar {
+      .ux-writing-list::-webkit-scrollbar,
+      .text-pair-container::-webkit-scrollbar {
         width: 6px;
       }
 
       .text-list::-webkit-scrollbar-track,
-      .ux-writing-list::-webkit-scrollbar-track {
+      .ux-writing-list::-webkit-scrollbar-track,
+      .text-pair-container::-webkit-scrollbar-track {
         background: #f1f5f9;
         border-radius: 3px;
       }
 
       .text-list::-webkit-scrollbar-thumb,
-      .ux-writing-list::-webkit-scrollbar-thumb {
+      .ux-writing-list::-webkit-scrollbar-thumb,
+      .text-pair-container::-webkit-scrollbar-thumb {
         background: #cbd5e1;
         border-radius: 3px;
       }
 
       .text-list::-webkit-scrollbar-thumb:hover,
-      .ux-writing-list::-webkit-scrollbar-thumb:hover {
+      .ux-writing-list::-webkit-scrollbar-thumb:hover,
+      .text-pair-container::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
       }
     </style>
@@ -380,6 +397,7 @@
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 16px;
+                flex-shrink: 0;
               "
             >
               <div style="display: flex; gap: 20px">
@@ -398,7 +416,7 @@
             </div>
           </div>
 
-          <div class="section">
+          <div class="section" style="flex: 0 0 auto; margin-top: 16px">
             <div class="language-selector">
               <label for="languageSelect">번역할 언어 선택</label>
               <select id="languageSelect">
