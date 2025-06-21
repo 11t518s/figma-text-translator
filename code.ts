@@ -1,6 +1,46 @@
 // 간단한 테스트용 Figma 플러그인
 console.log("플러그인이 시작되었습니다!");
 
+// =============== 환경 변수 설정 ===============
+// 빌드 시점에 생성된 환경 변수 import
+import { ENV_VARS } from "./env-vars";
+
+// .env 파일에서 읽어온 환경 변수를 사용하여 설정 구성
+function createEnvConfig() {
+  // Azure OpenAI 엔드포인트 형식 맞추기
+  let endpoint = ENV_VARS.AZURE_OPENAI_ENDPOINT || "";
+  if (endpoint && !endpoint.includes("/chat/completions")) {
+    endpoint =
+      endpoint.replace(/\/$/, "") +
+      "/openai/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview";
+  }
+
+  return {
+    AZURE_OPENAI_KEY: ENV_VARS.AZURE_OPENAI_KEY || "",
+    AZURE_OPENAI_ENDPOINT: endpoint,
+    UX_WRITING_SYSTEM_PROMPT:
+      ENV_VARS.PROMPT || "기본 UX 라이팅 프롬프트가 설정되지 않았습니다.",
+    OPENAI_MODEL: "gpt-4",
+    OPENAI_MAX_TOKENS: 150,
+    OPENAI_TEMPERATURE: 0.3,
+  };
+}
+
+const ENV_CONFIG = createEnvConfig();
+
+// API 키 설정 함수
+function setOpenAIApiKey(apiKey: string) {
+  ENV_CONFIG.AZURE_OPENAI_KEY = apiKey;
+  console.log("Azure OpenAI API 키가 설정되었습니다");
+}
+
+// API 키 확인 함수
+function hasValidApiKey(): boolean {
+  return !!(
+    ENV_CONFIG.AZURE_OPENAI_KEY && ENV_CONFIG.AZURE_OPENAI_KEY.trim() !== ""
+  );
+}
+
 // =============== TRANSLATOR 모듈 (인라인) ===============
 /**
  * 모킹 번역 함수 (실제 OpenAI API 대신 사용)
@@ -94,6 +134,7 @@ async function improveUxWritingBatch(
   onProgress?: (current: number, total: number) => void
 ): Promise<string[]> {
   const results: string[] = [];
+  const effectiveApiKey = apiKey || ENV_CONFIG.AZURE_OPENAI_KEY;
 
   for (let i = 0; i < texts.length; i++) {
     const text = texts[i];
@@ -105,12 +146,13 @@ async function improveUxWritingBatch(
 
     let improvedText: string;
 
-    if (apiKey) {
-      // OpenAI API 사용 (추후 구현)
-      console.log("OpenAI API 호출 예정:", text);
-      improvedText = mockUxWriting(text);
+    if (effectiveApiKey && effectiveApiKey.trim() !== "") {
+      // OpenAI API 사용
+      console.log("OpenAI API로 UX Writing 개선 중:", text);
+      improvedText = await improveUxWritingWithAI(text, effectiveApiKey);
     } else {
       // 모킹 함수 사용
+      console.log("모킹 함수로 UX Writing 개선 중:", text);
       improvedText = mockUxWriting(text);
     }
 
@@ -122,7 +164,11 @@ async function improveUxWritingBatch(
     }
 
     // API 레이트 리밋을 위한 짧은 지연
-    if (apiKey && i < texts.length - 1) {
+    if (
+      effectiveApiKey &&
+      effectiveApiKey.trim() !== "" &&
+      i < texts.length - 1
+    ) {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
   }
@@ -153,44 +199,68 @@ interface TextNodeInfo {
   isUxMode?: boolean; // 현재 UX 모드인지 여부
 }
 
-// 실제 UX 라이팅 개선 함수 (미래 OpenAI API 사용)
-async function improveUxWriting(
+// 실제 Azure OpenAI API를 사용한 UX 라이팅 개선 함수
+async function improveUxWritingWithAI(
   text: string,
-  apiKey?: string
+  apiKey: string = ENV_CONFIG.AZURE_OPENAI_KEY
 ): Promise<string> {
-  if (!apiKey) {
-    // API 키가 없을 때 모킹 함수 사용
+  if (!apiKey || apiKey.trim() === "") {
+    console.log("API 키가 없어서 모킹 함수를 사용합니다:", text);
     return mockUxWriting(text);
   }
 
   try {
-    // 추후 OpenAI API 구현 예정
-    // const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //     Authorization: `Bearer ${apiKey}`,
-    //   },
-    //   body: JSON.stringify({
-    //     model: "gpt-3.5-turbo",
-    //     messages: [
-    //       {
-    //         role: "system",
-    //         content: "You are a UX writing expert. Improve the given text to be more user-friendly, clear, and concise while maintaining the original meaning."
-    //       },
-    //       {
-    //         role: "user",
-    //         content: text
-    //       }
-    //     ]
-    //   })
-    // });
+    const response = await fetch(ENV_CONFIG.AZURE_OPENAI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey, // Azure OpenAI는 api-key 헤더를 사용
+      },
+      body: JSON.stringify({
+        model: ENV_CONFIG.OPENAI_MODEL,
+        messages: [
+          {
+            role: "system",
+            content: ENV_CONFIG.UX_WRITING_SYSTEM_PROMPT,
+          },
+          {
+            role: "user",
+            content: `Original text: "${text}"`,
+          },
+        ],
+        max_tokens: ENV_CONFIG.OPENAI_MAX_TOKENS,
+        temperature: ENV_CONFIG.OPENAI_TEMPERATURE,
+      }),
+    });
 
-    return mockUxWriting(text);
+    if (!response.ok) {
+      throw new Error(
+        `OpenAI API 요청 실패: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    const improvedText = data.choices[0]?.message?.content?.trim();
+
+    if (!improvedText) {
+      throw new Error("UX Writing 개선 결과가 비어있습니다");
+    }
+
+    // __ 패턴으로 감싸기 (UX 라이팅 적용 표시)
+    return `__${improvedText}__`;
   } catch (error) {
     console.error("UX Writing 개선 오류:", error);
-    return text;
+    // 에러 발생 시 모킹 함수로 대체
+    return mockUxWriting(text);
   }
+}
+
+// 호환성을 위한 기존 함수명 유지
+async function improveUxWriting(
+  text: string,
+  apiKey?: string
+): Promise<string> {
+  return improveUxWritingWithAI(text, apiKey);
 }
 
 // 페이지의 모든 텍스트 노드 수집
@@ -525,6 +595,31 @@ figma.ui.onmessage = async (msg: any) => {
         SUPPORTED_LANGUAGES[targetLanguage] || targetLanguage;
       console.log(`🎉 번역 완료 알림: ${languageName}`);
       figma.notify(`${languageName}로 번역이 완료되었습니다!`);
+    } else if (msg.type === "set-api-key") {
+      // OpenAI API 키 설정
+      const { apiKey } = msg;
+      console.log("🔑 API 키 설정 요청 받음");
+
+      if (!apiKey || apiKey.trim() === "") {
+        console.error("❌ 유효하지 않은 API 키");
+        figma.notify("유효한 API 키를 입력해주세요!");
+        return;
+      }
+
+      setOpenAIApiKey(apiKey);
+      figma.notify("API 키가 설정되었습니다! 🔑");
+
+      // UI에 API 키 상태 전송
+      figma.ui.postMessage({
+        type: "api-key-status",
+        hasApiKey: hasValidApiKey(),
+      });
+    } else if (msg.type === "get-api-key-status") {
+      // API 키 상태 확인
+      figma.ui.postMessage({
+        type: "api-key-status",
+        hasApiKey: hasValidApiKey(),
+      });
     } else if (msg.type === "close") {
       figma.closePlugin();
     } else if (msg.type === "ui-test-message") {

@@ -4,13 +4,17 @@
   "description": "Figma 텍스트 번역 플러그인",
   "main": "code.js",
   "scripts": {
-    "build": "tsc",
+    "prebuild": "node -e \"const fs=require('fs'); const dotenv=require('dotenv'); const env=dotenv.config().parsed||{}; const content='// 자동 생성된 환경 설정\\nexport const ENV_VARS = ' + JSON.stringify(env, null, 2) + ';'; fs.writeFileSync('env-vars.ts', content);\"",
+    "build": "npm run prebuild && tsc",
     "watch": "tsc --watch",
     "dev": "tsc --watch"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.88.0",
-    "@types/node": "^24.0.1",
+    "@types/node": "^24.0.3",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0"
   }
 }
