@@ -1,208 +1,119 @@
-// OpenAI API를 사용한 번역 함수
-// 나중에 API 키를 받으면 이 함수를 code.ts에서 사용하세요
-
-interface TranslationRequest {
-  text: string;
-  targetLanguage: string;
-  sourceLanguage?: string;
-}
-
-interface TranslationResponse {
-  translatedText: string;
-  error?: string;
-}
+// 번역 전용 모듈
 
 /**
- * 모킹 번역 함수 (실제 OpenAI API 대신 사용)
- * API 키가 없을 때 사용되는 기본 번역 로직
+ * Azure OpenAI API를 사용하여 텍스트를 번역합니다
  */
-export function mockTranslate(text: string, targetLanguage: string): string {
-  // 사용자 요청: 간단하게 언어명으로 바뀌게 하기
-  const languageNames: { [key: string]: string } = {
-    ko: "한국어",
-    en: "English",
-    ja: "日本語",
-    zh: "中文",
-    es: "Español",
-    fr: "Français",
-    de: "Deutsch",
-  };
+async function translateWithOpenAI(
+  texts: string[],
+  targetLanguage: string
+): Promise<string[]> {
+  // 1) Google Gemini가 설정되어 있으면 우선 사용
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    try {
+      const model = process.env.GEMINI_MODEL || "gemini-1.5-pro-latest";
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
 
-  return languageNames[targetLanguage] || targetLanguage;
-}
+      const userPrompt = `다음 텍스트들을 ${targetLanguage}로 번역해주세요. 각 텍스트는 줄바꿈으로 구분되어 있습니다:\n\n${texts.join(
+        "\n"
+      )}`;
 
-/**
- * OpenAI API를 사용하여 텍스트를 번역합니다
- * @param apiKey OpenAI API 키
- * @param request 번역 요청 정보
- * @returns 번역된 텍스트
- */
-export async function translateWithOpenAI(
-  apiKey: string,
-  request: TranslationRequest
-): Promise<TranslationResponse> {
-  const { text, targetLanguage, sourceLanguage = "auto" } = request;
-
-  try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: `You are a professional translator. Translate the given text to ${getLanguageName(
-              targetLanguage
-            )}. Only return the translated text without any additional explanation or formatting. Maintain the original tone and style.`,
-          },
+      const bodyGemini = {
+        systemInstruction: {
+          parts: [
+            {
+              text: `당신은 전문 번역가입니다. 주어진 텍스트를 ${targetLanguage}로 자연스럽게 번역해주세요. UI/UX 텍스트의 맥락을 고려하여 번역하세요.`,
+            },
+          ],
+        },
+        contents: [
           {
             role: "user",
-            content: text,
+            parts: [
+              {
+                text: userPrompt,
+              },
+            ],
           },
         ],
-        max_tokens: 1000,
-        temperature: 0.3,
-      }),
-    });
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1000,
+        },
+      };
 
-    if (!response.ok) {
-      throw new Error(
-        `OpenAI API 요청 실패: ${response.status} ${response.statusText}`
-      );
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bodyGemini),
+      });
+
+      if (!resp.ok) {
+        throw new Error(`Gemini API 호출 실패: ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      const translatedContent =
+        data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      const translatedTexts = translatedContent
+        .trim()
+        .split("\n")
+        .filter((line: string) => line.trim());
+
+      if (translatedTexts.length !== texts.length) {
+        console.warn("번역된 텍스트 개수가 원본과 다릅니다 (Gemini)");
+        return texts.map((t) => t + " (번역 실패)");
+      }
+
+      return translatedTexts;
+    } catch (err) {
+      console.error("Gemini 번역 실패", err);
+      // 계속 진행하여 Azure OpenAI 시도
     }
-
-    const data = await response.json();
-    const translatedText = data.choices[0]?.message?.content?.trim();
-
-    if (!translatedText) {
-      throw new Error("번역 결과가 비어있습니다");
-    }
-
-    return { translatedText };
-  } catch (error) {
-    console.error("번역 오류:", error);
-    return {
-      translatedText: text,
-      error:
-        error instanceof Error
-          ? error.message
-          : "알 수 없는 오류가 발생했습니다",
-    };
   }
+
+  // Gemini 사용 실패 시
+  console.error("Gemini API도 실패했습니다. 번역 불가");
+  return texts.map((t) => t + " (번역 실패)");
+}
+
+/**
+ * 지원되는 언어 목록
+ */
+const SUPPORTED_LANGUAGES = {
+  en: "English",
+  ja: "Japanese",
+  zh: "Chinese",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  ru: "Russian",
+  pt: "Portuguese",
+  ar: "Arabic",
+};
+
+/**
+ * 언어 코드가 지원되는지 확인
+ */
+function isSupportedLanguage(langCode: string): boolean {
+  return langCode in SUPPORTED_LANGUAGES;
 }
 
 /**
  * 언어 코드를 언어 이름으로 변환
  */
-function getLanguageName(languageCode: string): string {
-  const languageNames: { [key: string]: string } = {
-    ko: "Korean",
-    en: "English",
-    ja: "Japanese",
-    zh: "Chinese",
-    es: "Spanish",
-    fr: "French",
-    de: "German",
-    it: "Italian",
-    pt: "Portuguese",
-    ru: "Russian",
-    ar: "Arabic",
-    hi: "Hindi",
-    th: "Thai",
-    vi: "Vietnamese",
-  };
-
-  return languageNames[languageCode] || languageCode;
-}
-
-/**
- * 텍스트 배열을 배치로 번역
- * @param apiKey OpenAI API 키
- * @param texts 번역할 텍스트 배열
- * @param targetLanguage 대상 언어
- * @param onProgress 진행률 콜백 (선택사항)
- * @returns 번역된 텍스트 배열
- */
-export async function translateBatch(
-  apiKey: string,
-  texts: string[],
-  targetLanguage: string,
-  onProgress?: (current: number, total: number) => void
-): Promise<string[]> {
-  const results: string[] = [];
-
-  for (let i = 0; i < texts.length; i++) {
-    const text = texts[i];
-
-    if (text.trim() === "") {
-      results.push(text);
-      continue;
-    }
-
-    const response = await translateWithOpenAI(apiKey, {
-      text,
-      targetLanguage,
-    });
-
-    results.push(response.translatedText);
-
-    // 진행률 콜백 호출
-    if (onProgress) {
-      onProgress(i + 1, texts.length);
-    }
-
-    // API 레이트 리밋을 위한 짧은 지연
-    if (i < texts.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-  }
-
-  return results;
-}
-
-// code.ts에서 실제 번역 기능을 사용하려면 아래 코드를 참고하세요:
-/*
-// code.ts에서 사용하는 방법:
-
-import { translateWithOpenAI, translateBatch } from './translator';
-
-// 단일 텍스트 번역
-async function translateText(text: string, targetLanguage: string) {
-  const apiKey = 'YOUR_OPENAI_API_KEY'; // 실제 API 키로 교체
-  const result = await translateWithOpenAI(apiKey, {
-    text,
-    targetLanguage
-  });
-  
-  if (result.error) {
-    console.error('번역 오류:', result.error);
-    return text; // 오류 시 원본 텍스트 반환
-  }
-  
-  return result.translatedText;
-}
-
-// 배치 번역 (여러 텍스트를 한 번에)
-async function translateMultipleTexts(texts: string[], targetLanguage: string) {
-  const apiKey = 'YOUR_OPENAI_API_KEY'; // 실제 API 키로 교체
-  
-  return await translateBatch(
-    apiKey, 
-    texts, 
-    targetLanguage,
-    (current, total) => {
-      console.log(`번역 진행률: ${current}/${total}`);
-      // UI에 진행률 표시
-      figma.ui.postMessage({
-        type: 'translation-progress',
-        current,
-        total
-      });
-    }
+function getLanguageName(langCode: string): string {
+  return (
+    SUPPORTED_LANGUAGES[langCode as keyof typeof SUPPORTED_LANGUAGES] ||
+    langCode
   );
 }
-*/
+
+export {
+  translateWithOpenAI,
+  SUPPORTED_LANGUAGES,
+  isSupportedLanguage,
+  getLanguageName,
+};

@@ -50,67 +50,7 @@
         opacity: 0.8;
       }
 
-      .api-key-section {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid rgba(255, 255, 255, 0.2);
-      }
-
-      .api-key-input-group {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-top: 8px;
-      }
-
-      .api-key-input {
-        flex: 1;
-        padding: 6px 10px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        font-size: 11px;
-        placeholder-color: rgba(255, 255, 255, 0.6);
-      }
-
-      .api-key-input::placeholder {
-        color: rgba(255, 255, 255, 0.6);
-      }
-
-      .api-key-button {
-        padding: 6px 12px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        font-size: 11px;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-
-      .api-key-button:hover {
-        background: rgba(255, 255, 255, 0.3);
-      }
-
-      .api-key-status {
-        margin-top: 6px;
-        font-size: 10px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-
-      .status-indicator {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #ef4444;
-      }
-
-      .status-indicator.connected {
-        background: #10b981;
-      }
+      /* API 키는 .env 파일에서 자동 관리되므로 관련 스타일 불필요 */
 
       .content {
         padding: 16px;
@@ -384,6 +324,15 @@
         background: #e5e7eb;
       }
 
+      .btn-ux {
+        background: #f59e0b;
+        color: white;
+      }
+
+      .btn-ux:hover:not(:disabled) {
+        background: #d97706;
+      }
+
       .btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -475,27 +424,10 @@
   <body>
     <div class="container">
       <div class="header">
-        <h1>텍스트 번역기1234</h1>
+        <h1>텍스트 번역기</h1>
         <p>Figma 페이지의 텍스트를 다른 언어로 번역합니다</p>
 
-        <div class="api-key-section">
-          <div style="font-size: 11px; margin-bottom: 4px">
-            OpenAI API 키 설정
-          </div>
-          <div class="api-key-input-group">
-            <input
-              type="password"
-              id="apiKeyInput"
-              class="api-key-input"
-              placeholder="sk-... (OpenAI API 키를 입력하세요)"
-            />
-            <button id="setApiKeyBtn" class="api-key-button">설정</button>
-          </div>
-          <div class="api-key-status">
-            <div id="apiStatusIndicator" class="status-indicator"></div>
-            <span id="apiStatusText">API 키 없음 (모킹 모드)</span>
-          </div>
-        </div>
+        <!-- API 키는 .env 파일에서 자동으로 로드됩니다 -->
       </div>
 
       <div class="content">
@@ -537,6 +469,9 @@
             <div class="button-group">
               <button id="refreshBtn" class="btn btn-secondary">
                 🔄 텍스트 새로고침
+              </button>
+              <button id="regenerateUxBtn" class="btn btn-ux">
+                ✨ UX 라이팅 재생성
               </button>
               <button id="translateBtn" class="btn btn-primary" disabled>
                 🌐 번역하기
@@ -605,19 +540,12 @@
         const loadingElement = document.getElementById("loading");
         const statusElement = document.getElementById("status");
 
-        // API 키 관련 요소들
-        const apiKeyInputElement = document.getElementById("apiKeyInput");
-        const setApiKeyBtnElement = document.getElementById("setApiKeyBtn");
-        const apiStatusIndicatorElement =
-          document.getElementById("apiStatusIndicator");
-        const apiStatusTextElement = document.getElementById("apiStatusText");
+        // API 키는 .env 파일에서 자동 로드
 
         console.log("🔍 DOM 요소 찾기 결과:");
         console.log("  textListElement:", !!textListElement);
         console.log("  uxWritingListElement:", !!uxWritingListElement);
         console.log("  languageSelectElement:", !!languageSelectElement);
-        console.log("  apiKeyInputElement:", !!apiKeyInputElement);
-        console.log("  setApiKeyBtnElement:", !!setApiKeyBtnElement);
 
         // 상태 관리
         let currentTexts = [];
@@ -626,38 +554,7 @@
 
         // 이벤트 리스너 등록
 
-        // API 키 설정 이벤트
-        if (setApiKeyBtnElement && apiKeyInputElement) {
-          setApiKeyBtnElement.addEventListener("click", () => {
-            const apiKey = apiKeyInputElement.value.trim();
-            console.log("🔑 API 키 설정 버튼 클릭");
-
-            if (!apiKey) {
-              console.error("❌ API 키가 비어있음");
-              return;
-            }
-
-            parent.postMessage(
-              {
-                pluginMessage: {
-                  type: "set-api-key",
-                  apiKey: apiKey,
-                },
-              },
-              "*"
-            );
-
-            // 입력 필드 클리어
-            apiKeyInputElement.value = "";
-          });
-
-          // Enter 키로도 설정 가능
-          apiKeyInputElement.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") {
-              setApiKeyBtnElement.click();
-            }
-          });
-        }
+        // API 키는 .env 파일에서 자동 로드되므로 별도 설정 불필요
 
         if (languageSelectElement) {
           languageSelectElement.addEventListener("change", (e) => {
@@ -714,15 +611,48 @@
           });
         }
 
-        // 초기 API 키 상태 확인
-        parent.postMessage(
-          {
-            pluginMessage: {
-              type: "get-api-key-status",
-            },
-          },
-          "*"
-        );
+        const regenerateUxBtnElement =
+          document.getElementById("regenerateUxBtn");
+        if (regenerateUxBtnElement) {
+          regenerateUxBtnElement.addEventListener("click", () => {
+            console.log("✨ UX 라이팅 재생성 버튼 클릭");
+
+            if (currentTexts.length === 0) {
+              alert("재생성할 텍스트가 없습니다.");
+              return;
+            }
+
+            // 확인 다이얼로그
+            const confirmed = confirm(
+              `${currentTexts.length}개의 텍스트에 대해 새로운 UX 라이팅을 생성하시겠습니까?`
+            );
+
+            if (confirmed) {
+              // UX 라이팅 재생성 중 표시
+              const textPairContainer =
+                document.getElementById("textPairContainer");
+              if (textPairContainer) {
+                textPairContainer.innerHTML = `
+                  <div class="empty-state">
+                    <div class="icon">✨</div>
+                    <div>새로운 UX 라이팅을 생성하는 중...</div>
+                  </div>
+                `;
+              }
+
+              parent.postMessage(
+                {
+                  pluginMessage: {
+                    type: "regenerate-ux-writing",
+                  },
+                },
+                "*"
+              );
+            }
+          });
+        }
+
+        // API 키는 .env 파일에서 자동 로드됨
 
         // 테스트 데이터 즉시 표시
         if (textListElement) {
@@ -797,10 +727,12 @@
               highlightAndScrollToText(nodeId, isNearest);
               break;
 
-            case "api-key-status":
-              console.log("🔑 API 키 상태 업데이트:", event.data.pluginMessage);
-              updateApiKeyStatus(event.data.pluginMessage.hasApiKey);
+            case "apply-csv-data":
+              console.log("📊 CSV 데이터 적용 완료");
+              alert("CSV 데이터가 성공적으로 적용되었습니다!");
               break;
+
+            // API 키 상태는 .env 파일에서 자동 관리됨
 
             default:
               console.log("🔄 알 수 없는 메시지 타입:", type);
@@ -810,20 +742,7 @@
 
         // 함수들 정의
 
-        // API 키 상태 업데이트 함수
-        function updateApiKeyStatus(hasApiKey) {
-          console.log("🔑 API 키 상태 업데이트:", hasApiKey);
-
-          if (apiStatusIndicatorElement && apiStatusTextElement) {
-            if (hasApiKey) {
-              apiStatusIndicatorElement.classList.add("connected");
-              apiStatusTextElement.textContent = "API 키 설정됨 (AI 모드)";
-            } else {
-              apiStatusIndicatorElement.classList.remove("connected");
-              apiStatusTextElement.textContent = "API 키 없음 (모킹 모드)";
-            }
-          }
-        }
+        // API 키는 .env 파일에서 자동 관리되므로 상태 업데이트 함수 불필요
 
         function updateOriginalTextList(texts) {
           console.log("📝 원본 텍스트 목록 업데이트, 개수:", texts.length);
@@ -905,46 +824,6 @@
             .join("");
 
           textPairContainer.innerHTML = textPairs;
-
-          // 클릭 이벤트 추가
-          textPairContainer.addEventListener("click", (e) => {
-            const textItem = e.target.closest(".text-item");
-            const uxItem = e.target.closest(".ux-item");
-
-            if (textItem) {
-              const textId = textItem.dataset.id;
-              console.log("🔄 원본 텍스트 클릭:", textId);
-
-              parent.postMessage(
-                {
-                  pluginMessage: {
-                    type: "toggle-text",
-                    nodeId: textId,
-                    useUxWriting: false,
-                  },
-                },
-                "*"
-              );
-
-              updateActiveStates(textId, false);
-            } else if (uxItem) {
-              const textId = uxItem.dataset.id;
-              console.log("🔄 UX Writing 클릭:", textId);
-
-              parent.postMessage(
-                {
-                  pluginMessage: {
-                    type: "toggle-text",
-                    nodeId: textId,
-                    useUxWriting: true,
-                  },
-                },
-                "*"
-              );
-
-              updateActiveStates(textId, true);
-            }
-          });
 
           console.log("✅ 텍스트 쌍 업데이트 완료");
         }
@@ -1034,6 +913,56 @@
           } else {
             console.warn(`⚠️ 텍스트를 찾을 수 없습니다: ${nodeId}`);
           }
+        }
+
+        // 클릭 이벤트 리스너 등록 (한 번만)
+        const textPairContainer = document.getElementById("textPairContainer");
+        if (textPairContainer) {
+          textPairContainer.addEventListener("click", (e) => {
+            const textItem = e.target.closest(".text-item");
+            const uxItem = e.target.closest(".ux-item");
+
+            if (textItem) {
+              const textId = textItem.dataset.id;
+              console.log("🔄 원본 텍스트 클릭:", textId);
+
+              parent.postMessage(
+                {
+                  pluginMessage: {
+                    type: "apply-original-text",
+                    nodeId: textId,
+                  },
+                },
+                "*"
+              );
+
+              updateActiveStates(textId, false);
+            } else if (uxItem) {
+              const textId = uxItem.dataset.id;
+              const textIndex = uxItem.dataset.index;
+              console.log("🔄 UX Writing 클릭:", textId);
+
+              // 저장된 UX 텍스트 찾기
+              const uxText = currentUxTexts.find((ux) => ux.id === textId);
+              if (uxText) {
+                console.log("📝 저장된 UX 텍스트 찾음:", uxText.uxContent);
+                parent.postMessage(
+                  {
+                    pluginMessage: {
+                      type: "apply-ux-text",
+                      nodeId: textId,
+                      uxContent: uxText.uxContent,
+                    },
+                  },
+                  "*"
+                );
+              } else {
+                console.error("❌ 저장된 UX 텍스트를 찾을 수 없음:", textId);
+              }
+
+              updateActiveStates(textId, true);
+            }
+          });
         }
 
         // 초기화: 플러그인에 텍스트 요청

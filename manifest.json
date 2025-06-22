@@ -9,6 +9,6 @@
   "editorType": ["figma"],
   "documentAccess": "dynamic-page",
   "networkAccess": {
-    "allowedDomains": ["https://api.openai.com"]
+    "allowedDomains": ["https://generativelanguage.googleapis.com"]
   }
 }
