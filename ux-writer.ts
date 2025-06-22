@@ -1,95 +1,43 @@
 // UX 라이팅 개선 전용 모듈
-import {
-  getEnhancedPrompt,
-  getBatchPrompt,
-  API_CONFIG,
-  ERROR_MESSAGES,
-} from "./prompt-config";
+import { getPrompt, API_CONFIG, ERROR_MESSAGES } from "./prompt-config";
 
 /**
- * Google Gemini API를 사용하여 UX 라이팅을 개선합니다
+ * UX 라이팅을 개선합니다 (단일 텍스트 또는 배열 처리)
  */
-async function improveUxWritingWithAI(text: string): Promise<string> {
+async function improveUxWriting(text: string): Promise<string>;
+async function improveUxWriting(texts: string[]): Promise<string[]>;
+async function improveUxWriting(
+  input: string | string[]
+): Promise<string | string[]> {
+  // 단일 텍스트인 경우 배열로 변환
+  const isArray = Array.isArray(input);
+  const texts = isArray ? input : [input];
+
+  if (!texts || texts.length === 0) {
+    return isArray ? [] : "";
+  }
+
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!geminiKey) {
     console.error(ERROR_MESSAGES.NO_API_KEY);
-    return text + ` (${ERROR_MESSAGES.IMPROVEMENT_FAILED})`;
+    const failedTexts = texts.map(
+      (t) => t + ` (${ERROR_MESSAGES.IMPROVEMENT_FAILED})`
+    );
+    return isArray ? failedTexts : failedTexts[0];
   }
 
   try {
     const model = API_CONFIG.GEMINI_MODEL;
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
 
-    const prompt = getEnhancedPrompt();
-
-    const bodyGemini = {
-      systemInstruction: {
-        parts: [{ text: prompt }],
-      },
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `다음 텍스트를 UX 라이팅 가이드에 따라 개선해주세요: "${text}"`,
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: API_CONFIG.TEMPERATURE,
-        maxOutputTokens: API_CONFIG.SINGLE_MAX_TOKENS,
-      },
-    };
-
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bodyGemini),
-    });
-
-    if (!resp.ok) {
-      throw new Error(`${ERROR_MESSAGES.API_CALL_FAILED}: ${resp.status}`);
-    }
-
-    const data = await resp.json();
-    const improved = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (improved) return improved.trim();
-
-    throw new Error(ERROR_MESSAGES.INVALID_RESPONSE);
-  } catch (error) {
-    console.error("UX 라이팅 개선 중 오류 발생:", error);
-    return text + ` (${ERROR_MESSAGES.IMPROVEMENT_FAILED})`;
-  }
-}
-
-/**
- * 여러 텍스트를 배치로 처리합니다
- */
-async function improveUxWritingBatch(texts: string[]): Promise<string[]> {
-  if (!texts || texts.length === 0) {
-    return [];
-  }
-
-  try {
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (!geminiKey) {
-      console.error(ERROR_MESSAGES.NO_API_KEY);
-      return texts.map((t) => t + ` (${ERROR_MESSAGES.IMPROVEMENT_FAILED})`);
-    }
-
-    const model = API_CONFIG.GEMINI_MODEL;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
-
-    const enhancedPrompt = getBatchPrompt();
+    const prompt = getPrompt(true); // 항상 배치 처리 프롬프트 사용
     const userPrompt = `다음 텍스트 배열의 각 항목을 UX 라이팅 가이드에 따라 개선해주세요:\n\n${JSON.stringify(
       texts
     )}`;
 
     const bodyGemini = {
       systemInstruction: {
-        parts: [{ text: enhancedPrompt }],
+        parts: [{ text: prompt }],
       },
       contents: [
         {
@@ -126,7 +74,8 @@ async function improveUxWritingBatch(texts: string[]): Promise<string[]> {
       responseText = jsonMatch[0];
     } else {
       console.warn(ERROR_MESSAGES.INVALID_RESPONSE, responseText);
-      return texts.map((t) => t + " (응답 형식 오류)");
+      const errorTexts = texts.map((t) => t + " (응답 형식 오류)");
+      return isArray ? errorTexts : errorTexts[0];
     }
 
     try {
@@ -139,9 +88,14 @@ async function improveUxWritingBatch(texts: string[]): Promise<string[]> {
         console.warn(
           `UX 라이팅 개선 결과가 유효한 배열이 아니거나 개수가 다릅니다. 원본: ${texts.length}, 결과: ${improvedTexts.length}`
         );
-        return texts.map((t) => t + ` (${ERROR_MESSAGES.IMPROVEMENT_FAILED})`);
+        const failedTexts = texts.map(
+          (t) => t + ` (${ERROR_MESSAGES.IMPROVEMENT_FAILED})`
+        );
+        return isArray ? failedTexts : failedTexts[0];
       }
-      return improvedTexts;
+
+      // 단일 텍스트인 경우 첫 번째 결과만 반환
+      return isArray ? improvedTexts : improvedTexts[0];
     } catch (parseError) {
       console.error(
         ERROR_MESSAGES.PARSING_FAILED,
@@ -149,11 +103,15 @@ async function improveUxWritingBatch(texts: string[]): Promise<string[]> {
         "원본 응답:",
         responseText
       );
-      return texts.map((t) => t + " (파싱 오류)");
+      const errorTexts = texts.map((t) => t + " (파싱 오류)");
+      return isArray ? errorTexts : errorTexts[0];
     }
   } catch (error) {
-    console.error("UX 라이팅 배치 개선 중 오류 발생:", error);
-    return texts.map((t) => t + ` (${ERROR_MESSAGES.IMPROVEMENT_FAILED})`);
+    console.error("UX 라이팅 개선 중 오류 발생:", error);
+    const failedTexts = texts.map(
+      (t) => t + ` (${ERROR_MESSAGES.IMPROVEMENT_FAILED})`
+    );
+    return isArray ? failedTexts : failedTexts[0];
   }
 }
 
@@ -185,9 +143,4 @@ function analyzeTone(text: string): string {
   return "neutral";
 }
 
-export {
-  improveUxWritingWithAI,
-  improveUxWritingBatch,
-  detectTextType,
-  analyzeTone,
-};
+export { improveUxWriting, detectTextType, analyzeTone };

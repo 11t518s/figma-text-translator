@@ -1,5 +1,5 @@
 // Figma 텍스트 번역 및 UX 라이팅 플러그인
-import { improveUxWritingWithAI, improveUxWritingBatch } from "./ux-writer";
+import { improveUxWriting } from "./ux-writer";
 import { translateWithOpenAI } from "./translator";
 
 console.log("플러그인이 시작되었습니다!");
@@ -85,7 +85,7 @@ async function generateUxWritingContent(
   }
 
   // 한 번의 API 호출로 모든 텍스트를 개선
-  const improvedTexts = await improveUxWritingBatch(originalTexts);
+  const improvedTexts = await improveUxWriting(originalTexts);
 
   const uxData = textNodes.map((nodeInfo, index) => ({
     id: nodeInfo.id,
@@ -518,46 +518,8 @@ figma.ui.onmessage = async (msg: any) => {
   }
 };
 
-// 초기 텍스트 수집
-try {
-  const initialTextNodes = collectAllTextNodes();
-  const initialTextData = initialTextNodes.map((node) => ({
-    id: node.id,
-    content: node.content,
-    isUxMode: node.isUxMode || false,
-  }));
-
-  // 즉시 기본 데이터 전송
-  const messageData = {
-    type: "initial-texts",
-    texts: initialTextData,
-    languages: SUPPORTED_LANGUAGES,
-  };
-
-  console.log("📤 UI로 초기 메시지 전송:", messageData);
-  figma.ui.postMessage(messageData);
-  console.log("📤 초기 메시지 전송 완료");
-  console.log(`초기 텍스트 ${initialTextData.length}개를 수집했습니다`);
-
-  // UX 라이팅 컨텐츠 비동기 생성 (나중에)
-  if (initialTextData.length > 0) {
-    setTimeout(() => {
-      generateUxWritingContent(initialTextNodes)
-        .then((uxData) => {
-          figma.ui.postMessage({
-            type: "ux-texts-ready",
-            uxTexts: uxData,
-          });
-          console.log("📤 UX 라이팅 데이터 전송 완료");
-        })
-        .catch((error) => {
-          console.error("UX 라이팅 생성 오류:", error);
-        });
-    }, 500);
-  }
-} catch (error) {
-  console.error("초기 텍스트 수집 오류:", error);
-}
+// 초기화 완료 로그만 남김
+console.log("🎯 플러그인 초기화 완료 - UI에서 텍스트 요청을 기다립니다");
 
 // 선택 변경 이벤트 리스너 추가
 figma.on("selectionchange", () => {
