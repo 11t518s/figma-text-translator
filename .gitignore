@@ -4,3 +4,4 @@ node_modules
 env-vars.ts
 .idea
 guide.csv
+prompt-config.ts
