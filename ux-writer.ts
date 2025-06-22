@@ -1,4 +1,44 @@
 // UX 라이팅 개선 전용 모듈
+import guideCSV from "./guide.csv";
+
+/**
+ * CSV 파일에서 가이드 내용을 파싱하여 반환합니다
+ */
+function parseGuideContent(): string {
+  try {
+    // CSV 파싱하여 주요 가이드만 추출 (첫 100줄 정도만 사용하여 토큰 절약)
+    const lines = guideCSV.split("\n"); // 헤더 제외하고 100줄
+    const guides = lines
+      .filter((line: string) => line.trim() && !line.startsWith("created_at"))
+      .map((line: string) => {
+        // CSV 파싱 시 따옴표로 둘러싸인 필드 처리
+        const regex = /("([^"]|"")*"|[^,]*)/g;
+        const parts: string[] = [];
+        let match;
+        while ((match = regex.exec(line)) !== null) {
+          parts.push(match[1].replace(/^"|"$/g, "").replace(/""/g, '"'));
+        }
+
+        if (parts.length >= 7) {
+          const original = parts[3]?.trim();
+          const category = parts[4]?.trim();
+          const improved = parts[5]?.trim();
+
+          if (original && improved && original !== improved && category) {
+            return `${original} → ${improved} (${category})`;
+          }
+        }
+        return null;
+      })
+      .filter((item): item is string => item !== null)
+      .slice(0, 50); // 최대 50개 예시만 사용
+
+    return guides.join("\n");
+  } catch (error) {
+    console.warn("guide.csv 파일을 파싱하는 중 오류 발생:", error);
+    return "";
+  }
+}
 
 /**
  * Azure OpenAI API를 사용하여 UX 라이팅을 개선합니다
@@ -80,7 +120,21 @@ async function improveUxWritingBatch(texts: string[]): Promise<string[]> {
     const model = process.env.GEMINI_MODEL || "gemini-1.5-pro-latest";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
 
-    const prompt = process.env.PROMPT;
+    // 기본 프롬프트와 가이드 내용 결합
+    const basePrompt = process.env.PROMPT;
+    const guideContent = parseGuideContent();
+
+    const enhancedPrompt = `${basePrompt}
+
+추가 참고사항 - 카카오모빌리티 UX 라이팅 가이드 예시:
+${guideContent}
+
+위 가이드 예시들을 참고하여 다음과 같은 원칙을 적용해주세요:
+- 어려운 표현을 쉬운 표현으로 바꾸기
+- 문어체를 구어체로 바꾸기  
+- 번역체나 어색한 표현 개선하기
+- 외래어를 한국어로 바꾸기
+- 공급자 중심 표현을 사용자 중심으로 바꾸기`;
 
     const userPrompt = `다음 텍스트 배열의 각 항목을 UX 라이팅 가이드에 따라 개선해주세요. 응답은 반드시 개선된 텍스트만 담은 JSON 문자열 배열(string array) 형식으로 원래 순서대로 제공해야 합니다. 예를 들어, 입력이 ["text1", "text2"] 라면, 응답은 ["improved text1", "improved text2"] 형식이어야 합니다. 다른 부연 설명이나 마크다운 문법(\`\`\`) 없이 순수한 JSON 배열만 반환해주세요.:\n\n${JSON.stringify(
       texts
@@ -88,7 +142,7 @@ async function improveUxWritingBatch(texts: string[]): Promise<string[]> {
 
     const bodyGemini = {
       systemInstruction: {
-        parts: [{ text: prompt }],
+        parts: [{ text: enhancedPrompt }],
       },
       contents: [
         {

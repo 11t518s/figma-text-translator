@@ -441,6 +441,71 @@ figma.ui.onmessage = async (msg: any) => {
         console.error("UX 라이팅 재생성 오류:", error);
         figma.notify("UX 라이팅 재생성 중 오류가 발생했습니다.");
       }
+    } else if (msg.type === "apply-csv-data") {
+      // CSV 데이터 적용
+      const { csvData } = msg;
+      console.log(`📊 CSV 데이터 적용 요청: ${csvData.length}개`);
+
+      if (!csvData || csvData.length === 0) {
+        console.error("❌ CSV 데이터가 없습니다");
+        figma.notify("CSV 데이터가 없습니다!");
+        return;
+      }
+
+      // 모든 텍스트 노드 수집
+      const textNodes = collectAllTextNodes();
+      console.log(`📊 현재 텍스트 노드: ${textNodes.length}개`);
+
+      let appliedCount = 0;
+
+      for (const csvRow of csvData) {
+        const { original, uxText } = csvRow;
+
+        // 원본 텍스트와 일치하는 노드 찾기
+        const matchingNode = textNodes.find(
+          (node) => node.content.trim() === original.trim()
+        );
+
+        if (matchingNode) {
+          try {
+            await figma.loadFontAsync(matchingNode.node.fontName as FontName);
+
+            // 원본 텍스트 저장 (없는 경우)
+            if (!matchingNode.node.getPluginData("originalText")) {
+              matchingNode.node.setPluginData("originalText", original);
+            }
+
+            // UX 텍스트 적용
+            if (uxText && uxText.trim()) {
+              matchingNode.node.characters = uxText;
+              matchingNode.node.setPluginData("isUxMode", "true");
+              console.log(`✅ CSV 적용: "${original}" → "${uxText}"`);
+              appliedCount++;
+            }
+          } catch (error) {
+            console.error(`❌ CSV 적용 실패: "${original}"`, error);
+          }
+        } else {
+          console.warn(`⚠️ 일치하는 텍스트 없음: "${original}"`);
+        }
+      }
+
+      console.log(`🎉 CSV 적용 완료: ${appliedCount}/${csvData.length}개`);
+      figma.notify(`CSV 데이터 적용 완료! ${appliedCount}개 텍스트 변경됨`);
+
+      // UI 업데이트를 위해 텍스트 다시 수집
+      const updatedTextNodes = collectAllTextNodes();
+      const updatedTextData = updatedTextNodes.map((node) => ({
+        id: node.id,
+        content: node.content,
+        isUxMode: node.isUxMode || false,
+      }));
+
+      figma.ui.postMessage({
+        type: "texts-collected",
+        texts: updatedTextData,
+        languages: SUPPORTED_LANGUAGES,
+      });
     } else if (msg.type === "close") {
       figma.closePlugin();
     } else if (msg.type === "ui-test-message") {

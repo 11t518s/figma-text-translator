@@ -101,6 +101,11 @@ module.exports = (env, argv) => ({
           },
         ],
       },
+      // CSV 파일을 텍스트로 처리
+      {
+        test: /\.csv$/,
+        use: "raw-loader",
+      },
     ],
   },
 
