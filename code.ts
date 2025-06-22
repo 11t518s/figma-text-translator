@@ -170,7 +170,7 @@ async function toggleTextContent(nodeId: string, useUxWriting: boolean) {
       // AI로 UX 라이팅 개선 - .env 파일 값 신뢰
       console.log(`🤖 AI로 UX 라이팅 개선 중: "${originalText}"`);
       try {
-        uxText = await improveUxWritingWithAI(originalText);
+        uxText = await improveUxWriting(originalText);
       } catch (error) {
         console.error("AI UX 라이팅 실패, 원본 텍스트 사용:", error);
         uxText = originalText + " (개선 실패)";
