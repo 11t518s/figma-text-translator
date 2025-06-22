@@ -424,7 +424,7 @@
   <body>
     <div class="container">
       <div class="header">
-        <h1>텍스트 번역기1234</h1>
+        <h1>텍스트 번역기</h1>
         <p>Figma 페이지의 텍스트를 다른 언어로 번역합니다</p>
 
         <!-- API 키는 .env 파일에서 자동으로 로드됩니다 -->
@@ -611,6 +611,47 @@
           });
         }
 
+        const regenerateUxBtnElement =
+          document.getElementById("regenerateUxBtn");
+        if (regenerateUxBtnElement) {
+          regenerateUxBtnElement.addEventListener("click", () => {
+            console.log("✨ UX 라이팅 재생성 버튼 클릭");
+
+            if (currentTexts.length === 0) {
+              alert("재생성할 텍스트가 없습니다.");
+              return;
+            }
+
+            // 확인 다이얼로그
+            const confirmed = confirm(
+              `${currentTexts.length}개의 텍스트에 대해 새로운 UX 라이팅을 생성하시겠습니까?`
+            );
+
+            if (confirmed) {
+              // UX 라이팅 재생성 중 표시
+              const textPairContainer =
+                document.getElementById("textPairContainer");
+              if (textPairContainer) {
+                textPairContainer.innerHTML = `
+                  <div class="empty-state">
+                    <div class="icon">✨</div>
+                    <div>새로운 UX 라이팅을 생성하는 중...</div>
+                  </div>
+                `;
+              }
+
+              parent.postMessage(
+                {
+                  pluginMessage: {
+                    type: "regenerate-ux-writing",
+                  },
+                },
+                "*"
+              );
+            }
+          });
+        }
+
         // API 키는 .env 파일에서 자동 로드됨
 
         // 테스트 데이터 즉시 표시
@@ -779,46 +820,6 @@
 
           textPairContainer.innerHTML = textPairs;
 
-          // 클릭 이벤트 추가
-          textPairContainer.addEventListener("click", (e) => {
-            const textItem = e.target.closest(".text-item");
-            const uxItem = e.target.closest(".ux-item");
-
-            if (textItem) {
-              const textId = textItem.dataset.id;
-              console.log("🔄 원본 텍스트 클릭:", textId);
-
-              parent.postMessage(
-                {
-                  pluginMessage: {
-                    type: "toggle-text",
-                    nodeId: textId,
-                    useUxWriting: false,
-                  },
-                },
-                "*"
-              );
-
-              updateActiveStates(textId, false);
-            } else if (uxItem) {
-              const textId = uxItem.dataset.id;
-              console.log("🔄 UX Writing 클릭:", textId);
-
-              parent.postMessage(
-                {
-                  pluginMessage: {
-                    type: "toggle-text",
-                    nodeId: textId,
-                    useUxWriting: true,
-                  },
-                },
-                "*"
-              );
-
-              updateActiveStates(textId, true);
-            }
-          });
-
           console.log("✅ 텍스트 쌍 업데이트 완료");
         }
 
@@ -907,6 +908,56 @@
           } else {
             console.warn(`⚠️ 텍스트를 찾을 수 없습니다: ${nodeId}`);
           }
+        }
+
+        // 클릭 이벤트 리스너 등록 (한 번만)
+        const textPairContainer = document.getElementById("textPairContainer");
+        if (textPairContainer) {
+          textPairContainer.addEventListener("click", (e) => {
+            const textItem = e.target.closest(".text-item");
+            const uxItem = e.target.closest(".ux-item");
+
+            if (textItem) {
+              const textId = textItem.dataset.id;
+              console.log("🔄 원본 텍스트 클릭:", textId);
+
+              parent.postMessage(
+                {
+                  pluginMessage: {
+                    type: "apply-original-text",
+                    nodeId: textId,
+                  },
+                },
+                "*"
+              );
+
+              updateActiveStates(textId, false);
+            } else if (uxItem) {
+              const textId = uxItem.dataset.id;
+              const textIndex = uxItem.dataset.index;
+              console.log("🔄 UX Writing 클릭:", textId);
+
+              // 저장된 UX 텍스트 찾기
+              const uxText = currentUxTexts.find((ux) => ux.id === textId);
+              if (uxText) {
+                console.log("📝 저장된 UX 텍스트 찾음:", uxText.uxContent);
+                parent.postMessage(
+                  {
+                    pluginMessage: {
+                      type: "apply-ux-text",
+                      nodeId: textId,
+                      uxContent: uxText.uxContent,
+                    },
+                  },
+                  "*"
+                );
+              } else {
+                console.error("❌ 저장된 UX 텍스트를 찾을 수 없음:", textId);
+              }
+
+              updateActiveStates(textId, true);
+            }
+          });
         }
 
         // 초기화: 플러그인에 텍스트 요청

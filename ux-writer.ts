@@ -11,9 +11,7 @@ async function improveUxWritingWithAI(text: string): Promise<string> {
       const model = process.env.GEMINI_MODEL || "gemini-1.5-pro-latest";
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
 
-      const prompt =
-        process.env.PROMPT ||
-        "당신은 모빌리티 앱 서비스의 UX 라이팅 전문가입니다.";
+      const prompt = process.env.PROMPT ?? "";
 
       const bodyGemini = {
         systemInstruction: {
@@ -82,9 +80,7 @@ async function improveUxWritingBatch(texts: string[]): Promise<string[]> {
     const model = process.env.GEMINI_MODEL || "gemini-1.5-pro-latest";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
 
-    const prompt =
-      process.env.PROMPT ||
-      "당신은 모빌리티 앱 서비스의 UX 라이팅 전문가입니다.";
+    const prompt = process.env.PROMPT;
 
     const userPrompt = `다음 텍스트 배열의 각 항목을 UX 라이팅 가이드에 따라 개선해주세요. 응답은 반드시 개선된 텍스트만 담은 JSON 문자열 배열(string array) 형식으로 원래 순서대로 제공해야 합니다. 예를 들어, 입력이 ["text1", "text2"] 라면, 응답은 ["improved text1", "improved text2"] 형식이어야 합니다. 다른 부연 설명이나 마크다운 문법(\`\`\`) 없이 순수한 JSON 배열만 반환해주세요.:\n\n${JSON.stringify(
       texts
