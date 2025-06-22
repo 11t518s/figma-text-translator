@@ -324,6 +324,15 @@
         background: #e5e7eb;
       }
 
+      .btn-ux {
+        background: #f59e0b;
+        color: white;
+      }
+
+      .btn-ux:hover:not(:disabled) {
+        background: #d97706;
+      }
+
       .btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
@@ -460,6 +469,9 @@
             <div class="button-group">
               <button id="refreshBtn" class="btn btn-secondary">
                 🔄 텍스트 새로고침
+              </button>
+              <button id="regenerateUxBtn" class="btn btn-ux">
+                ✨ UX 라이팅 재생성
               </button>
               <button id="translateBtn" class="btn btn-primary" disabled>
                 🌐 번역하기

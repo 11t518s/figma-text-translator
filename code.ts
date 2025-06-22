@@ -411,6 +411,36 @@ figma.ui.onmessage = async (msg: any) => {
       console.log(`🎉 번역 완료 알림: ${languageName}`);
       figma.notify(`${languageName}로 번역이 완료되었습니다!`);
       // API 키 관련 메시지는 .env 파일 사용으로 더 이상 필요 없음
+    } else if (msg.type === "regenerate-ux-writing") {
+      // UX 라이팅 재생성
+      console.log("✨ UX 라이팅 재생성 요청 받음");
+
+      // 모든 텍스트 노드 다시 수집
+      const textNodes = collectAllTextNodes();
+      console.log(`📊 재생성할 텍스트 노드: ${textNodes.length}개`);
+
+      if (textNodes.length === 0) {
+        console.log("⚠️ 재생성할 텍스트가 없습니다");
+        figma.notify("재생성할 텍스트가 없습니다!");
+        return;
+      }
+
+      try {
+        // 새로운 UX 라이팅 컨텐츠 생성
+        const uxData = await generateUxWritingContent(textNodes);
+
+        // UI에 새로운 UX 라이팅 데이터 전송
+        figma.ui.postMessage({
+          type: "ux-texts-ready",
+          uxTexts: uxData,
+        });
+
+        console.log("📤 새로운 UX 라이팅 데이터 전송 완료");
+        figma.notify("새로운 UX 라이팅이 생성되었습니다! ✨");
+      } catch (error) {
+        console.error("UX 라이팅 재생성 오류:", error);
+        figma.notify("UX 라이팅 재생성 중 오류가 발생했습니다.");
+      }
     } else if (msg.type === "close") {
       figma.closePlugin();
     } else if (msg.type === "ui-test-message") {

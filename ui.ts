@@ -17,6 +17,7 @@ setTimeout(() => {
     "uxWritingList",
     "languageSelect",
     "refreshBtn",
+    "regenerateUxBtn",
     "translateBtn",
   ];
 
@@ -39,6 +40,9 @@ function findUIElements() {
     refreshBtnElement: document.getElementById(
       "refreshBtn"
     ) as HTMLButtonElement,
+    regenerateUxBtnElement: document.getElementById(
+      "regenerateUxBtn"
+    ) as HTMLButtonElement,
     translateBtnElement: document.getElementById(
       "translateBtn"
     ) as HTMLButtonElement,
@@ -60,6 +64,7 @@ const textListElement = ui.textListElement;
 const uxWritingListElement = ui.uxWritingListElement;
 const languageSelectElement = ui.languageSelectElement;
 const refreshBtnElement = ui.refreshBtnElement;
+const regenerateUxBtnElement = ui.regenerateUxBtnElement;
 const translateBtnElement = ui.translateBtnElement;
 const loadingElement = ui.loadingElement;
 const statusElement = ui.statusElement;
@@ -259,10 +264,12 @@ function toggleLoading(show: boolean) {
     loadingElement.classList.add("show");
     translateBtnElement.disabled = true;
     refreshBtnElement.disabled = true;
+    regenerateUxBtnElement.disabled = true;
   } else {
     loadingElement.classList.remove("show");
     translateBtnElement.disabled = languageSelectElement.value === "";
     refreshBtnElement.disabled = false;
+    regenerateUxBtnElement.disabled = false;
   }
 }
 
@@ -303,6 +310,38 @@ refreshBtnElement.addEventListener("click", () => {
       <div>텍스트를 검색하는 중...</div>
     </div>
   `;
+});
+
+// UX 라이팅 재생성 버튼 클릭 이벤트
+regenerateUxBtnElement.addEventListener("click", () => {
+  if (currentTexts.length === 0) {
+    alert("재생성할 텍스트가 없습니다.");
+    return;
+  }
+
+  // 확인 다이얼로그
+  const confirmed = confirm(
+    `${currentTexts.length}개의 텍스트에 대해 새로운 UX 라이팅을 생성하시겠습니까?`
+  );
+
+  if (confirmed) {
+    // UX 라이팅 재생성 중 표시
+    uxWritingListElement.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">✨</div>
+        <div>새로운 UX 라이팅을 생성하는 중...</div>
+      </div>
+    `;
+
+    parent.postMessage(
+      {
+        pluginMessage: {
+          type: "regenerate-ux-writing",
+        },
+      },
+      "*"
+    );
+  }
 });
 
 // 번역 버튼 클릭 이벤트
