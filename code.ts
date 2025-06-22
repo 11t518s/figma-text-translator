@@ -1,180 +1,8 @@
-// 간단한 테스트용 Figma 플러그인
+// Figma 텍스트 번역 및 UX 라이팅 플러그인
+import { improveUxWritingWithAI, improveUxWritingBatch } from "./ux-writer";
+import { translateWithOpenAI } from "./translator";
+
 console.log("플러그인이 시작되었습니다!");
-
-// =============== 환경 변수 설정 ===============
-// 빌드 시점에 생성된 환경 변수 import
-import { ENV_VARS } from "./env-vars";
-
-// .env 파일에서 읽어온 환경 변수를 사용하여 설정 구성
-function createEnvConfig() {
-  // Azure OpenAI 엔드포인트 형식 맞추기
-  let endpoint = ENV_VARS.AZURE_OPENAI_ENDPOINT || "";
-  if (endpoint && !endpoint.includes("/chat/completions")) {
-    endpoint =
-      endpoint.replace(/\/$/, "") +
-      "/openai/deployments/gpt-4/chat/completions?api-version=2024-02-15-preview";
-  }
-
-  return {
-    AZURE_OPENAI_KEY: ENV_VARS.AZURE_OPENAI_KEY || "",
-    AZURE_OPENAI_ENDPOINT: endpoint,
-    UX_WRITING_SYSTEM_PROMPT:
-      ENV_VARS.PROMPT || "기본 UX 라이팅 프롬프트가 설정되지 않았습니다.",
-    OPENAI_MODEL: "gpt-4",
-    OPENAI_MAX_TOKENS: 150,
-    OPENAI_TEMPERATURE: 0.3,
-  };
-}
-
-const ENV_CONFIG = createEnvConfig();
-
-// API 키 설정 함수
-function setOpenAIApiKey(apiKey: string) {
-  ENV_CONFIG.AZURE_OPENAI_KEY = apiKey;
-  console.log("Azure OpenAI API 키가 설정되었습니다");
-}
-
-// API 키 확인 함수
-function hasValidApiKey(): boolean {
-  return !!(
-    ENV_CONFIG.AZURE_OPENAI_KEY && ENV_CONFIG.AZURE_OPENAI_KEY.trim() !== ""
-  );
-}
-
-// =============== TRANSLATOR 모듈 (인라인) ===============
-/**
- * 모킹 번역 함수 (실제 OpenAI API 대신 사용)
- * API 키가 없을 때 사용되는 기본 번역 로직
- */
-function mockTranslate(text: string, targetLanguage: string): string {
-  // 사용자 요청: 간단하게 언어명으로 바뀌게 하기
-  const languageNames: { [key: string]: string } = {
-    ko: "한국어",
-    en: "English",
-    ja: "日本語",
-    zh: "中文",
-    es: "Español",
-    fr: "Français",
-    de: "Deutsch",
-  };
-
-  return languageNames[targetLanguage] || targetLanguage;
-}
-
-// =============== UX WRITER 모듈 (인라인) ===============
-interface UxWritingRequest {
-  text: string;
-  context?: string;
-  tone?: "friendly" | "professional" | "casual" | "formal";
-  target?: "button" | "label" | "message" | "description" | "title";
-}
-
-// 전역 텍스트 노드 캐시 제거 - 실시간 처리로 변경
-
-/**
- * 모킹 UX Writing 개선 함수
- * API 키가 없을 때 사용되는 기본 개선 로직
- */
-function mockUxWriting(text: string): string {
-  // 이미 UX Writing이 적용된 텍스트인지 확인 (__ 패턴)
-  if (text.startsWith("__") && text.endsWith("__")) {
-    return text; // 이미 적용된 경우 그대로 반환
-  }
-
-  // 단순한 개선 규칙들
-  let improved = text;
-
-  // 1. 기본 개선사항들
-  const improvements = [
-    // 더 친근한 표현으로 변경
-    { from: /오류/g, to: "문제" },
-    { from: /실패/g, to: "완료되지 않음" },
-    { from: /불가능/g, to: "지원되지 않음" },
-    { from: /금지/g, to: "허용되지 않음" },
-
-    // 더 명확한 액션 단어 사용
-    { from: /클릭/g, to: "선택" },
-    { from: /입력/g, to: "작성" },
-    { from: /확인/g, to: "완료" },
-
-    // 더 사용자 중심의 언어
-    { from: /시스템/g, to: "앱" },
-    { from: /데이터/g, to: "정보" },
-    { from: /프로세스/g, to: "과정" },
-  ];
-
-  improvements.forEach(({ from, to }) => {
-    improved = improved.replace(from, to);
-  });
-
-  // 2. 길이에 따른 개선
-  if (improved.length > 20) {
-    // 긴 텍스트는 더 간결하게
-    improved = improved.replace(/입니다/g, "됨");
-    improved = improved.replace(/해주세요/g, "하세요");
-    improved = improved.replace(/하였습니다/g, "했습니다");
-  }
-
-  // 3. __ 패턴으로 감싸기
-  return `__${improved}__`;
-}
-
-/**
- * 텍스트 배열을 배치로 UX Writing 개선
- * @param apiKey OpenAI API 키 (선택사항)
- * @param texts 개선할 텍스트 배열
- * @param options 개선 옵션
- * @param onProgress 진행률 콜백 (선택사항)
- * @returns 개선된 텍스트 배열
- */
-async function improveUxWritingBatch(
-  apiKey: string | null,
-  texts: string[],
-  options: Partial<UxWritingRequest> = {},
-  onProgress?: (current: number, total: number) => void
-): Promise<string[]> {
-  const results: string[] = [];
-  const effectiveApiKey = apiKey || ENV_CONFIG.AZURE_OPENAI_KEY;
-
-  for (let i = 0; i < texts.length; i++) {
-    const text = texts[i];
-
-    if (text.trim() === "") {
-      results.push(text);
-      continue;
-    }
-
-    let improvedText: string;
-
-    if (effectiveApiKey && effectiveApiKey.trim() !== "") {
-      // OpenAI API 사용
-      console.log("OpenAI API로 UX Writing 개선 중:", text);
-      improvedText = await improveUxWritingWithAI(text, effectiveApiKey);
-    } else {
-      // 모킹 함수 사용
-      console.log("모킹 함수로 UX Writing 개선 중:", text);
-      improvedText = mockUxWriting(text);
-    }
-
-    results.push(improvedText);
-
-    // 진행률 콜백 호출
-    if (onProgress) {
-      onProgress(i + 1, texts.length);
-    }
-
-    // API 레이트 리밋을 위한 짧은 지연
-    if (
-      effectiveApiKey &&
-      effectiveApiKey.trim() !== "" &&
-      i < texts.length - 1
-    ) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-  }
-
-  return results;
-}
 
 // =============== FIGMA 플러그인 메인 로직 ===============
 
@@ -199,68 +27,74 @@ interface TextNodeInfo {
   isUxMode?: boolean; // 현재 UX 모드인지 여부
 }
 
-// 실제 Azure OpenAI API를 사용한 UX 라이팅 개선 함수
-async function improveUxWritingWithAI(
-  text: string,
-  apiKey: string = ENV_CONFIG.AZURE_OPENAI_KEY
-): Promise<string> {
-  if (!apiKey || apiKey.trim() === "") {
-    console.log("API 키가 없어서 모킹 함수를 사용합니다:", text);
-    return mockUxWriting(text);
+// OpenAI API 키 관리
+// .env 파일에서 모든 설정을 가져오므로 별도 API 키 관리 불필요
+
+// 모킹 번역 함수 (테스트용)
+function mockTranslate(text: string, targetLanguage: string): string {
+  const mockTranslations: { [key: string]: { [key: string]: string } } = {
+    ko: {
+      로그인: "로그인",
+      회원가입: "회원가입",
+      홈: "홈",
+      설정: "설정",
+    },
+    en: {
+      로그인: "Login",
+      회원가입: "Sign Up",
+      홈: "Home",
+      설정: "Settings",
+    },
+    ja: {
+      로그인: "ログイン",
+      회원가입: "新規登録",
+      홈: "ホーム",
+      설정: "設定",
+    },
+  };
+
+  const translations = mockTranslations[targetLanguage];
+  if (translations && translations[text]) {
+    return translations[text];
   }
 
-  try {
-    const response = await fetch(ENV_CONFIG.AZURE_OPENAI_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": apiKey, // Azure OpenAI는 api-key 헤더를 사용
-      },
-      body: JSON.stringify({
-        model: ENV_CONFIG.OPENAI_MODEL,
-        messages: [
-          {
-            role: "system",
-            content: ENV_CONFIG.UX_WRITING_SYSTEM_PROMPT,
-          },
-          {
-            role: "user",
-            content: `Original text: "${text}"`,
-          },
-        ],
-        max_tokens: ENV_CONFIG.OPENAI_MAX_TOKENS,
-        temperature: ENV_CONFIG.OPENAI_TEMPERATURE,
-      }),
-    });
+  // 기본 모킹: 언어별 접두사 추가
+  const prefixes: { [key: string]: string } = {
+    en: "[EN] ",
+    ja: "[JP] ",
+    zh: "[CN] ",
+    es: "[ES] ",
+    fr: "[FR] ",
+    de: "[DE] ",
+  };
 
-    if (!response.ok) {
-      throw new Error(
-        `OpenAI API 요청 실패: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-    const improvedText = data.choices[0]?.message?.content?.trim();
-
-    if (!improvedText) {
-      throw new Error("UX Writing 개선 결과가 비어있습니다");
-    }
-
-    // __ 패턴으로 감싸기 (UX 라이팅 적용 표시)
-    return `__${improvedText}__`;
-  } catch (error) {
-    console.error("UX Writing 개선 오류:", error);
-    // 에러 발생 시 모킹 함수로 대체
-    return mockUxWriting(text);
-  }
+  const prefix =
+    prefixes[targetLanguage] || `[${targetLanguage.toUpperCase()}] `;
+  return prefix + text;
 }
 
-// 호환성을 위한 기존 함수명 유지
-async function improveUxWriting(
-  text: string,
-  apiKey?: string
-): Promise<string> {
-  return improveUxWritingWithAI(text, apiKey);
+// UX 라이팅 컨텐츠 생성 함수
+async function generateUxWritingContent(
+  textNodes: TextNodeInfo[]
+): Promise<Array<{ id: string; content: string; uxContent: string }>> {
+  console.log(`🎨 UX 라이팅 컨텐츠 생성 시작: ${textNodes.length}개 텍스트`);
+
+  const originalTexts = textNodes.map((node) => node.content);
+  if (originalTexts.length === 0) {
+    return [];
+  }
+
+  // 한 번의 API 호출로 모든 텍스트를 개선
+  const improvedTexts = await improveUxWritingBatch(originalTexts);
+
+  const uxData = textNodes.map((nodeInfo, index) => ({
+    id: nodeInfo.id,
+    content: nodeInfo.content,
+    uxContent: improvedTexts[index] || nodeInfo.content + " (개선 실패)",
+  }));
+
+  console.log(`🎉 전체 UX 라이팅 생성 완료: ${uxData.length}개`);
+  return uxData;
 }
 
 // 페이지의 모든 텍스트 노드 수집
@@ -300,50 +134,6 @@ function collectAllTextNodes(): TextNodeInfo[] {
   return textNodes;
 }
 
-// 텍스트와 UX 개선 텍스트 생성
-async function generateUxWritingContent(
-  textNodes: TextNodeInfo[]
-): Promise<Array<{ id: string; content: string; uxContent: string }>> {
-  const result = [];
-
-  // 모든 텍스트를 배치로 처리
-  const texts = textNodes.map((node) => node.content);
-
-  try {
-    // 배치 UX Writing 개선 (현재는 모킹 함수 사용)
-    const improvedTexts = await improveUxWritingBatch(
-      null, // API 키 없이 모킹 사용
-      texts,
-      { tone: "friendly" }, // 기본 옵션
-      (current: number, total: number) => {
-        console.log(`UX Writing 진행률: ${current}/${total}`);
-      }
-    );
-
-    // 결과 매핑
-    for (let i = 0; i < textNodes.length; i++) {
-      result.push({
-        id: textNodes[i].id,
-        content: textNodes[i].content,
-        uxContent: improvedTexts[i] || mockUxWriting(textNodes[i].content),
-      });
-    }
-  } catch (error) {
-    console.error("배치 UX Writing 처리 오류:", error);
-
-    // 오류 시 개별 처리로 fallback
-    for (const textInfo of textNodes) {
-      result.push({
-        id: textInfo.id,
-        content: textInfo.content,
-        uxContent: mockUxWriting(textInfo.content),
-      });
-    }
-  }
-
-  return result;
-}
-
 // 특정 텍스트 노드의 내용 토글
 async function toggleTextContent(nodeId: string, useUxWriting: boolean) {
   console.log(
@@ -375,7 +165,17 @@ async function toggleTextContent(nodeId: string, useUxWriting: boolean) {
 
     if (useUxWriting) {
       // UX 라이팅 모드로 변경
-      const uxText = await improveUxWriting(originalText);
+      let uxText: string;
+
+      // AI로 UX 라이팅 개선 - .env 파일 값 신뢰
+      console.log(`🤖 AI로 UX 라이팅 개선 중: "${originalText}"`);
+      try {
+        uxText = await improveUxWritingWithAI(originalText);
+      } catch (error) {
+        console.error("AI UX 라이팅 실패, 원본 텍스트 사용:", error);
+        uxText = originalText + " (개선 실패)";
+      }
+
       textNode.characters = uxText;
       textNode.setPluginData("isUxMode", "true");
 
@@ -420,7 +220,22 @@ async function translateAndApplyTexts(
       }
 
       // 번역 수행 (현재 텍스트 기준)
-      const translatedText = mockTranslate(currentText, targetLanguage);
+      let translatedText: string;
+
+      // AI로 번역 - .env 파일 값 신뢰
+      console.log(`🤖 AI로 번역 중: "${currentText}" → ${targetLanguage}`);
+      try {
+        const response = await translateWithOpenAI(
+          [currentText],
+          targetLanguage
+        );
+        translatedText =
+          response[0] || mockTranslate(currentText, targetLanguage);
+      } catch (error) {
+        console.error("AI 번역 실패, 모킹으로 대체:", error);
+        translatedText = mockTranslate(currentText, targetLanguage);
+      }
+
       console.log(`🔄 번역 결과: "${currentText}" → "${translatedText}"`);
 
       // 텍스트 적용
@@ -595,31 +410,7 @@ figma.ui.onmessage = async (msg: any) => {
         SUPPORTED_LANGUAGES[targetLanguage] || targetLanguage;
       console.log(`🎉 번역 완료 알림: ${languageName}`);
       figma.notify(`${languageName}로 번역이 완료되었습니다!`);
-    } else if (msg.type === "set-api-key") {
-      // OpenAI API 키 설정
-      const { apiKey } = msg;
-      console.log("🔑 API 키 설정 요청 받음");
-
-      if (!apiKey || apiKey.trim() === "") {
-        console.error("❌ 유효하지 않은 API 키");
-        figma.notify("유효한 API 키를 입력해주세요!");
-        return;
-      }
-
-      setOpenAIApiKey(apiKey);
-      figma.notify("API 키가 설정되었습니다! 🔑");
-
-      // UI에 API 키 상태 전송
-      figma.ui.postMessage({
-        type: "api-key-status",
-        hasApiKey: hasValidApiKey(),
-      });
-    } else if (msg.type === "get-api-key-status") {
-      // API 키 상태 확인
-      figma.ui.postMessage({
-        type: "api-key-status",
-        hasApiKey: hasValidApiKey(),
-      });
+      // API 키 관련 메시지는 .env 파일 사용으로 더 이상 필요 없음
     } else if (msg.type === "close") {
       figma.closePlugin();
     } else if (msg.type === "ui-test-message") {
