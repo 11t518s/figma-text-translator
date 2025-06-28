@@ -1,6 +1,14 @@
 // Figma 텍스트 번역 및 UX 라이팅 플러그인
 import { improveUxWriting } from "./ux-writer";
 import { translateWithOpenAI } from "./translator";
+import {
+  CHUNK_CONFIG,
+  API_CONFIG,
+  estimateTokens,
+  divideIntoChunks,
+  processChunkWithRetry,
+  delay,
+} from "./prompt-config";
 
 console.log("플러그인이 시작되었습니다!");
 
@@ -73,28 +81,94 @@ function mockTranslate(text: string, targetLanguage: string): string {
   return prefix + text;
 }
 
-// UX 라이팅 컨텐츠 생성 함수
+// 청크 처리 함수들은 prompt-config.ts에서 import해서 사용
+
+// UX 라이팅 컨텐츠 생성 함수 (청크 단위 처리)
 async function generateUxWritingContent(
   textNodes: TextNodeInfo[]
 ): Promise<Array<{ id: string; content: string; uxContent: string }>> {
   console.log(`🎨 UX 라이팅 컨텐츠 생성 시작: ${textNodes.length}개 텍스트`);
 
-  const originalTexts = textNodes.map((node) => node.content);
-  if (originalTexts.length === 0) {
+  if (textNodes.length === 0) {
     return [];
   }
 
-  // 한 번의 API 호출로 모든 텍스트를 개선
-  const improvedTexts = await improveUxWriting(originalTexts);
+  // 청크로 나누기
+  const chunks = divideIntoChunks(textNodes, (node) => node.content);
+  console.log(`📦 ${chunks.length}개 청크로 나누어 처리 시작`);
 
-  const uxData = textNodes.map((nodeInfo, index) => ({
-    id: nodeInfo.id,
-    content: nodeInfo.content,
-    uxContent: improvedTexts[index] || nodeInfo.content + " (개선 실패)",
-  }));
+  // UI에 진행률 업데이트
+  figma.ui.postMessage({
+    type: "ux-generation-progress",
+    current: 0,
+    total: chunks.length,
+    message: "UX 라이팅 생성 준비 중...",
+  });
 
-  console.log(`🎉 전체 UX 라이팅 생성 완료: ${uxData.length}개`);
-  return uxData;
+  const allUxData: Array<{ id: string; content: string; uxContent: string }> =
+    [];
+
+  // 각 청크별로 순차 처리
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+
+    try {
+      // UI에 진행률 업데이트
+      figma.ui.postMessage({
+        type: "ux-generation-progress",
+        current: i,
+        total: chunks.length,
+        message: `청크 ${i + 1}/${chunks.length} 처리 중... (${
+          chunk.length
+        }개 텍스트)`,
+      });
+
+      // 청크 처리
+      const chunkTexts = chunk.map((node) => node.content);
+      const improvedTexts = await processChunkWithRetry(
+        chunkTexts,
+        async (texts) => await improveUxWriting(texts),
+        i,
+        chunks.length
+      );
+
+      // 결과를 최종 배열에 추가
+      const chunkUxData = chunk.map((nodeInfo, index) => ({
+        id: nodeInfo.id,
+        content: nodeInfo.content,
+        uxContent: improvedTexts[index] || nodeInfo.content + " (개선 실패)",
+      }));
+
+      allUxData.push(...chunkUxData);
+
+      // 청크 간 지연 (마지막 청크가 아닌 경우)
+      if (i < chunks.length - 1) {
+        await delay(CHUNK_CONFIG.CHUNK_DELAY);
+      }
+    } catch (error) {
+      console.error(`💥 청크 ${i + 1} 처리 최종 실패:`, error);
+
+      // 실패한 청크는 원본 텍스트로 처리
+      const failedChunkData = chunk.map((nodeInfo) => ({
+        id: nodeInfo.id,
+        content: nodeInfo.content,
+        uxContent: nodeInfo.content + " (개선 실패)",
+      }));
+
+      allUxData.push(...failedChunkData);
+    }
+  }
+
+  // UI에 완료 업데이트
+  figma.ui.postMessage({
+    type: "ux-generation-progress",
+    current: chunks.length,
+    total: chunks.length,
+    message: "UX 라이팅 생성 완료!",
+  });
+
+  console.log(`🎉 전체 UX 라이팅 생성 완료: ${allUxData.length}개`);
+  return allUxData;
 }
 
 // 페이지의 모든 텍스트 노드 수집
@@ -192,7 +266,7 @@ async function toggleTextContent(nodeId: string, useUxWriting: boolean) {
   }
 }
 
-// 텍스트 번역 및 적용 (배치 처리)
+// 텍스트 번역 및 적용 (청크 단위 처리)
 async function translateAndApplyTexts(
   textNodes: TextNodeInfo[],
   targetLanguage: string
@@ -205,10 +279,8 @@ async function translateAndApplyTexts(
   }
 
   // 1. 모든 텍스트 수집 및 원본 저장
-  const textsToTranslate: string[] = [];
   for (const textInfo of textNodes) {
     const currentText = textInfo.node.characters;
-    textsToTranslate.push(currentText);
 
     // 원본 텍스트가 저장되어 있지 않다면 현재 텍스트를 저장
     if (!textInfo.node.getPluginData("originalText")) {
@@ -222,64 +294,110 @@ async function translateAndApplyTexts(
     }
   }
 
-  console.log(`📝 번역 대상 텍스트: ${textsToTranslate.length}개`);
+  // 2. 청크로 나누어 번역 처리
+  const chunks = divideIntoChunks(textNodes, (node) => node.node.characters);
+  console.log(`📦 ${chunks.length}개 청크로 나누어 번역 시작`);
 
-  // 2. 한 번의 API 호출로 모든 텍스트 번역
-  let translatedTexts: string[];
-  try {
-    console.log(
-      `🤖 AI로 배치 번역 중: ${textsToTranslate.length}개 → ${targetLanguage}`
-    );
-    translatedTexts = await translateWithOpenAI(
-      textsToTranslate,
-      targetLanguage
-    );
+  // UI에 진행률 업데이트
+  figma.ui.postMessage({
+    type: "translation-progress",
+    current: 0,
+    total: chunks.length,
+    message: "번역 준비 중...",
+  });
 
-    // 번역 결과 검증
-    if (translatedTexts.length !== textsToTranslate.length) {
-      console.warn(
-        `⚠️ 번역 결과 개수 불일치: 원본 ${textsToTranslate.length}개, 번역 ${translatedTexts.length}개`
-      );
-      // 부족한 부분은 모킹으로 채우기
-      while (translatedTexts.length < textsToTranslate.length) {
-        const index = translatedTexts.length;
-        translatedTexts.push(
-          mockTranslate(textsToTranslate[index], targetLanguage)
-        );
-      }
-    }
-  } catch (error) {
-    console.error("AI 번역 실패, 모킹으로 대체:", error);
-    translatedTexts = textsToTranslate.map((text) =>
-      mockTranslate(text, targetLanguage)
-    );
-  }
-
-  console.log(`🔄 번역 완료: ${translatedTexts.length}개 텍스트`);
-
-  // 3. 번역된 텍스트를 각 노드에 적용
-  for (let i = 0; i < textNodes.length; i++) {
-    const textInfo = textNodes[i];
-    const translatedText = translatedTexts[i];
+  // 각 청크별로 순차 처리
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
 
     try {
-      // 폰트 로드 (필요한 경우)
-      await figma.loadFontAsync(textInfo.node.fontName as FontName);
+      // UI에 진행률 업데이트
+      figma.ui.postMessage({
+        type: "translation-progress",
+        current: i,
+        total: chunks.length,
+        message: `청크 ${i + 1}/${chunks.length} 번역 중... (${
+          chunk.length
+        }개 텍스트)`,
+      });
 
-      // 텍스트 적용
-      textInfo.node.characters = translatedText;
-
-      // 번역된 상태임을 표시
-      textInfo.node.setPluginData("isTranslated", "true");
-      textInfo.node.setPluginData("translatedLanguage", targetLanguage);
-
-      console.log(
-        `✅ 번역 적용 완료: "${textsToTranslate[i]}" → "${translatedText}"`
+      // 청크의 텍스트 수집
+      const textsToTranslate = chunk.map(
+        (textInfo) => textInfo.node.characters
       );
+
+      // 청크 번역
+      const translatedTexts = await processChunkWithRetry(
+        textsToTranslate,
+        async (texts) => await translateWithOpenAI(texts, targetLanguage),
+        i,
+        chunks.length
+      );
+
+      // 번역된 텍스트를 각 노드에 적용
+      for (let j = 0; j < chunk.length; j++) {
+        const textInfo = chunk[j];
+        const translatedText =
+          translatedTexts[j] ||
+          mockTranslate(textsToTranslate[j], targetLanguage);
+
+        try {
+          // 폰트 로드 (필요한 경우)
+          await figma.loadFontAsync(textInfo.node.fontName as FontName);
+
+          // 텍스트 적용
+          textInfo.node.characters = translatedText;
+
+          // 번역된 상태임을 표시
+          textInfo.node.setPluginData("isTranslated", "true");
+          textInfo.node.setPluginData("translatedLanguage", targetLanguage);
+
+          console.log(
+            `✅ 번역 적용 완료: "${textsToTranslate[j]}" → "${translatedText}"`
+          );
+        } catch (error) {
+          console.error(`❌ 텍스트 적용 실패 (ID: ${textInfo.id}):`, error);
+        }
+      }
+
+      // 청크 간 지연 (마지막 청크가 아닌 경우)
+      if (i < chunks.length - 1) {
+        await delay(CHUNK_CONFIG.CHUNK_DELAY);
+      }
     } catch (error) {
-      console.error(`❌ 텍스트 적용 실패 (ID: ${textInfo.id}):`, error);
+      console.error(`💥 청크 ${i + 1} 번역 최종 실패:`, error);
+
+      // 실패한 청크는 모킹으로 처리
+      for (const textInfo of chunk) {
+        try {
+          const currentText = textInfo.node.characters;
+          const fallbackText = mockTranslate(currentText, targetLanguage);
+
+          await figma.loadFontAsync(textInfo.node.fontName as FontName);
+          textInfo.node.characters = fallbackText;
+          textInfo.node.setPluginData("isTranslated", "true");
+          textInfo.node.setPluginData("translatedLanguage", targetLanguage);
+
+          console.log(
+            `🔄 모킹 번역 적용: "${currentText}" → "${fallbackText}"`
+          );
+        } catch (fallbackError) {
+          console.error(
+            `❌ 모킹 번역도 실패 (ID: ${textInfo.id}):`,
+            fallbackError
+          );
+        }
+      }
     }
   }
+
+  // UI에 완료 업데이트
+  figma.ui.postMessage({
+    type: "translation-progress",
+    current: chunks.length,
+    total: chunks.length,
+    message: "번역 완료!",
+  });
 
   console.log(`🎉 전체 번역 완료! ${textNodes.length}개 텍스트 처리됨`);
 }

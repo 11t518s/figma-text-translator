@@ -737,6 +737,19 @@
               }
               break;
 
+            case "ux-generation-progress":
+              console.log(
+                "🎨 UX 라이팅 생성 진행률:",
+                event.data.pluginMessage
+              );
+              updateProgressBar(event.data.pluginMessage, "UX 라이팅");
+              break;
+
+            case "translation-progress":
+              console.log("🌐 번역 진행률:", event.data.pluginMessage);
+              updateProgressBar(event.data.pluginMessage, "번역");
+              break;
+
             case "apply-csv-data":
               console.log("📊 CSV 데이터 적용 완료");
               alert("CSV 데이터가 성공적으로 적용되었습니다!");
@@ -865,6 +878,35 @@
           const activeItem = document.querySelector(selector);
           if (activeItem) {
             activeItem.classList.add("active");
+          }
+        }
+
+        // 진행률 바 업데이트 함수
+        function updateProgressBar(progressData, processType) {
+          const { current, total, message } = progressData;
+
+          // 상태 메시지 업데이트
+          const statusElement = document.getElementById("status");
+          if (statusElement) {
+            const percentage =
+              total > 0 ? Math.round((current / total) * 100) : 0;
+            statusElement.innerHTML = `
+              <div style="margin-bottom: 8px;">${processType} 진행률: ${current}/${total} (${percentage}%)</div>
+              <div style="background: #f0f0f0; border-radius: 4px; overflow: hidden; height: 8px;">
+                <div style="background: #4f46e5; height: 100%; transition: width 0.3s ease; width: ${percentage}%"></div>
+              </div>
+              <div style="margin-top: 8px; font-size: 12px; color: #666;">${message}</div>
+            `;
+            statusElement.style.display = "block";
+          }
+
+          // 완료 시 상태 바 숨기기
+          if (current >= total) {
+            setTimeout(() => {
+              if (statusElement) {
+                statusElement.style.display = "none";
+              }
+            }, 3000);
           }
         }
 
