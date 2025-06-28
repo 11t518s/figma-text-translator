@@ -287,7 +287,7 @@ async function translateAndApplyTexts(
 // UI 시작 - 에러 핸들링 추가
 try {
   figma.showUI(__html__, {
-    width: 1000,
+    width: 699,
     height: 800,
     themeColors: true,
   });
@@ -406,6 +406,34 @@ figma.ui.onmessage = async (msg: any) => {
         figma.notify("UX 라이팅으로 변경되었습니다! ✨");
       } catch (error) {
         console.error(`❌ UX 텍스트 적용 실패 (ID: ${nodeId}):`, error);
+      }
+    } else if (msg.type === "focus-text-node") {
+      // 텍스트 노드 포커스 (더블클릭 시)
+      const { nodeId } = msg;
+      console.log(`🎯 텍스트 노드 포커스 요청: ${nodeId}`);
+
+      const node = await figma.getNodeByIdAsync(nodeId);
+
+      if (!node || node.type !== "TEXT") {
+        console.error("❌ 텍스트 노드를 찾을 수 없습니다:", nodeId);
+        figma.notify("텍스트를 찾을 수 없습니다 😅");
+        return;
+      }
+
+      const textNode = node as TextNode;
+
+      try {
+        // 노드 선택
+        figma.currentPage.selection = [textNode];
+
+        // 노드가 보이도록 스크롤
+        figma.viewport.scrollAndZoomIntoView([textNode]);
+
+        console.log(`✅ 텍스트 노드 포커스 완료: ${nodeId}`);
+        figma.notify("텍스트가 선택되었습니다! 🎯");
+      } catch (error) {
+        console.error(`❌ 텍스트 노드 포커스 실패 (ID: ${nodeId}):`, error);
+        figma.notify("텍스트 포커스 중 오류가 발생했습니다 😅");
       }
     } else if (msg.type === "translate-texts") {
       const { targetLanguage } = msg;

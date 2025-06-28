@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>텍스트 번역기1</title>
+    <title>텍스트 번역기1222</title>
     <style>
       * {
         box-sizing: border-box;
@@ -727,6 +727,18 @@
               highlightAndScrollToText(nodeId, isNearest);
               break;
 
+            case "node-selected":
+              console.log(
+                "🎯 Figma에서 노드 선택됨:",
+                event.data.pluginMessage
+              );
+              const { textInfo } = event.data.pluginMessage;
+              if (textInfo && textInfo.id) {
+                // Figma에서 선택한 텍스트를 UI에서 하이라이트하고 스크롤
+                highlightAndScrollToText(textInfo.id, false);
+              }
+              break;
+
             case "apply-csv-data":
               console.log("📊 CSV 데이터 적용 완료");
               alert("CSV 데이터가 성공적으로 적용되었습니다!");
@@ -918,6 +930,7 @@
         // 클릭 이벤트 리스너 등록 (한 번만)
         const textPairContainer = document.getElementById("textPairContainer");
         if (textPairContainer) {
+          // 단일 클릭 이벤트
           textPairContainer.addEventListener("click", (e) => {
             const textItem = e.target.closest(".text-item");
             const uxItem = e.target.closest(".ux-item");
@@ -961,6 +974,27 @@
               }
 
               updateActiveStates(textId, true);
+            }
+          });
+
+          // 더블클릭 이벤트 (Figma 캔버스에서 텍스트 포커스)
+          textPairContainer.addEventListener("dblclick", (e) => {
+            const textItem = e.target.closest(".text-item");
+            const uxItem = e.target.closest(".ux-item");
+
+            if (textItem || uxItem) {
+              const textId = (textItem || uxItem).dataset.id;
+              console.log("🎯 더블클릭으로 텍스트 포커스 요청:", textId);
+
+              parent.postMessage(
+                {
+                  pluginMessage: {
+                    type: "focus-text-node",
+                    nodeId: textId,
+                  },
+                },
+                "*"
+              );
             }
           });
         }

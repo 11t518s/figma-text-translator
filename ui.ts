@@ -440,6 +440,15 @@ window.onmessage = (event) => {
       }, 1000);
       break;
 
+    case "node-selected":
+      console.log("🎯 Figma에서 노드 선택됨:", event.data.pluginMessage);
+      const { textInfo } = event.data.pluginMessage;
+      if (textInfo && textInfo.id) {
+        console.log(`📝 선택된 텍스트: "${textInfo.content}"`);
+        // ui.ts는 간단한 버전이므로 하이라이트 기능은 ui.html에서 처리
+      }
+      break;
+
     default:
       console.log("🔄 알 수 없는 메시지 타입:", type);
       break;
