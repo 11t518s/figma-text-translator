@@ -78,42 +78,4 @@ async function translateWithOpenAI(
   return texts.map((t) => t + " (번역 실패)");
 }
 
-/**
- * 지원되는 언어 목록
- */
-const SUPPORTED_LANGUAGES = {
-  en: "English",
-  ja: "Japanese",
-  zh: "Chinese",
-  es: "Spanish",
-  fr: "French",
-  de: "German",
-  it: "Italian",
-  ru: "Russian",
-  pt: "Portuguese",
-  ar: "Arabic",
-};
-
-/**
- * 언어 코드가 지원되는지 확인
- */
-function isSupportedLanguage(langCode: string): boolean {
-  return langCode in SUPPORTED_LANGUAGES;
-}
-
-/**
- * 언어 코드를 언어 이름으로 변환
- */
-function getLanguageName(langCode: string): string {
-  return (
-    SUPPORTED_LANGUAGES[langCode as keyof typeof SUPPORTED_LANGUAGES] ||
-    langCode
-  );
-}
-
-export {
-  translateWithOpenAI,
-  SUPPORTED_LANGUAGES,
-  isSupportedLanguage,
-  getLanguageName,
-};
+export { translateWithOpenAI };

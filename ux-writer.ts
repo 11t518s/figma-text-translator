@@ -115,32 +115,4 @@ async function improveUxWriting(
   }
 }
 
-/**
- * 텍스트 타입을 자동으로 감지합니다
- */
-function detectTextType(text: string): string {
-  if (text.includes("?")) return "question";
-  if (text.includes("!")) return "exclamation";
-  if (text.length < 10) return "label";
-  if (text.length > 50) return "description";
-  return "general";
-}
-
-/**
- * 텍스트 톤을 분석합니다
- */
-function analyzeTone(text: string): string {
-  const formalKeywords = ["입니다", "습니다", "하십시오"];
-  const informalKeywords = ["해요", "이에요", "해주세요"];
-
-  const hasFormal = formalKeywords.some((keyword) => text.includes(keyword));
-  const hasInformal = informalKeywords.some((keyword) =>
-    text.includes(keyword)
-  );
-
-  if (hasFormal) return "formal";
-  if (hasInformal) return "informal";
-  return "neutral";
-}
-
-export { improveUxWriting, detectTextType, analyzeTone };
+export { improveUxWriting };
