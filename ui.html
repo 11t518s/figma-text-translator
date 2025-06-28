@@ -127,7 +127,6 @@
         border-radius: 6px;
         flex: 1;
         overflow-y: auto;
-        max-height: 500px;
         padding: 8px;
       }
 
@@ -225,7 +224,6 @@
         border-radius: 6px;
         flex: 1;
         overflow-y: auto;
-        max-height: 700px;
         padding: 8px;
       }
 
@@ -801,16 +799,9 @@
             .map((text, index) => {
               const uxText = uxTexts.find((ux) => ux.id === text.id);
 
-              const truncatedOriginal =
-                text.content.length > 40
-                  ? text.content.substring(0, 40) + "..."
-                  : text.content;
+              const truncatedOriginal = text.content;
 
-              const truncatedUx = uxText
-                ? uxText.uxContent.length > 40
-                  ? uxText.uxContent.substring(0, 40) + "..."
-                  : uxText.uxContent
-                : "생성 중...";
+              const truncatedUx = uxText ? uxText.uxContent : "생성 중...";
 
               return `
                 <div class="text-pair">

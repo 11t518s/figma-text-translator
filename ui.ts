@@ -101,10 +101,7 @@ function updateOriginalTextList(
 
   const textItems = texts
     .map((text, index) => {
-      const truncatedContent =
-        text.content.length > 50
-          ? text.content.substring(0, 50) + "..."
-          : text.content;
+      const truncatedContent = text.content;
 
       const isActive = text.isUxMode === false || text.isUxMode === undefined;
       const activeClass = isActive ? "active" : "";
@@ -178,10 +175,7 @@ function updateUxWritingList(
 
   const uxItems = uxTexts
     .map((text, index) => {
-      const truncatedContent =
-        text.uxContent.length > 50
-          ? text.uxContent.substring(0, 50) + "..."
-          : text.uxContent;
+      const truncatedContent = text.uxContent;
 
       // 현재 텍스트가 UX 모드인지 확인
       const currentText = currentTexts.find((t) => t.id === text.id);
