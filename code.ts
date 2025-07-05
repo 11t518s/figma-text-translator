@@ -1,5 +1,9 @@
 // Figma 텍스트 번역 및 UX 라이팅 플러그인
-import { improveUxWriting } from "./ux-writer";
+import {
+  improveUxWriting,
+  improveUxWritingWithReasons,
+  ImprovementResult,
+} from "./ux-writer";
 import { translateWithOpenAI } from "./translator";
 import {
   CHUNK_CONFIG,
@@ -32,6 +36,7 @@ interface TextNodeInfo {
   node: TextNode;
   originalContent?: string; // 원본 텍스트 저장
   uxContent?: string; // UX 라이팅 개선된 텍스트
+  changeReason?: string; // 변경 이유
   isUxMode?: boolean; // 현재 UX 모드인지 여부
 }
 
@@ -84,9 +89,14 @@ function mockTranslate(text: string, targetLanguage: string): string {
 // 청크 처리 함수들은 prompt-config.ts에서 import해서 사용
 
 // UX 라이팅 컨텐츠 생성 함수 (청크 단위 처리)
-async function generateUxWritingContent(
-  textNodes: TextNodeInfo[]
-): Promise<Array<{ id: string; content: string; uxContent: string }>> {
+async function generateUxWritingContent(textNodes: TextNodeInfo[]): Promise<
+  Array<{
+    id: string;
+    content: string;
+    uxContent: string;
+    changeReason: string;
+  }>
+> {
   console.log(`🎨 UX 라이팅 컨텐츠 생성 시작: ${textNodes.length}개 텍스트`);
 
   if (textNodes.length === 0) {
@@ -105,8 +115,12 @@ async function generateUxWritingContent(
     message: "UX 라이팅 생성 준비 중...",
   });
 
-  const allUxData: Array<{ id: string; content: string; uxContent: string }> =
-    [];
+  const allUxData: Array<{
+    id: string;
+    content: string;
+    uxContent: string;
+    changeReason: string;
+  }> = [];
 
   // 각 청크별로 순차 처리
   for (let i = 0; i < chunks.length; i++) {
@@ -123,21 +137,25 @@ async function generateUxWritingContent(
         }개 텍스트)`,
       });
 
-      // 청크 처리
+      // 청크 처리 - 변경 이유와 함께 받아오기
       const chunkTexts = chunk.map((node) => node.content);
-      const improvedTexts = await processChunkWithRetry(
+      const improvementResults = await processChunkWithRetry(
         chunkTexts,
-        async (texts) => await improveUxWriting(texts),
+        async (texts) => await improveUxWritingWithReasons(texts),
         i,
         chunks.length
       );
 
       // 결과를 최종 배열에 추가
-      const chunkUxData = chunk.map((nodeInfo, index) => ({
-        id: nodeInfo.id,
-        content: nodeInfo.content,
-        uxContent: improvedTexts[index] || nodeInfo.content + " (개선 실패)",
-      }));
+      const chunkUxData = chunk.map((nodeInfo, index) => {
+        const result = improvementResults[index];
+        return {
+          id: nodeInfo.id,
+          content: nodeInfo.content,
+          uxContent: result?.improved || nodeInfo.content + " (개선 실패)",
+          changeReason: result?.reason || "처리 중 오류 발생",
+        };
+      });
 
       allUxData.push(...chunkUxData);
 
@@ -153,6 +171,7 @@ async function generateUxWritingContent(
         id: nodeInfo.id,
         content: nodeInfo.content,
         uxContent: nodeInfo.content + " (개선 실패)",
+        changeReason: "처리 중 오류 발생",
       }));
 
       allUxData.push(...failedChunkData);
