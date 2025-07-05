@@ -19,6 +19,7 @@ setTimeout(() => {
     "refreshBtn",
     "regenerateUxBtn",
     "translateBtn",
+    "sortSelect",
   ];
 
   testElements.forEach((id) => {
@@ -48,6 +49,9 @@ function findUIElements() {
     ) as HTMLButtonElement,
     loadingElement: document.getElementById("loading") as HTMLDivElement,
     statusElement: document.getElementById("status") as HTMLDivElement,
+    sortSelectElement: document.getElementById(
+      "sortSelect"
+    ) as HTMLSelectElement,
   };
 
   console.log("🔍 DOM 요소 찾기 결과:");
@@ -68,6 +72,7 @@ const regenerateUxBtnElement = ui.regenerateUxBtnElement;
 const translateBtnElement = ui.translateBtnElement;
 const loadingElement = ui.loadingElement;
 const statusElement = ui.statusElement;
+const sortSelectElement = ui.sortSelectElement;
 
 // 상태 관리
 let currentTexts: Array<{ id: string; content: string; isUxMode?: boolean }> =
@@ -75,6 +80,42 @@ let currentTexts: Array<{ id: string; content: string; isUxMode?: boolean }> =
 let currentUxTexts: Array<{ id: string; content: string; uxContent: string }> =
   [];
 let supportedLanguages: { [key: string]: string } = {};
+let originalTextsOrder: Array<{
+  id: string;
+  content: string;
+  isUxMode?: boolean;
+}> = [];
+
+// 정렬 함수들
+function sortTexts(
+  texts: Array<{ id: string; content: string; isUxMode?: boolean }>,
+  sortType: string
+) {
+  const sortedTexts = [...texts];
+
+  switch (sortType) {
+    case "korean":
+      return sortedTexts.sort((a, b) => {
+        // 한글 자모 순서로 정렬
+        return a.content.localeCompare(b.content, "ko", {
+          sensitivity: "base",
+          numeric: true,
+          ignorePunctuation: true,
+        });
+      });
+    case "order":
+    default:
+      // 원본 순서 유지
+      return originalTextsOrder.length > 0
+        ? originalTextsOrder
+            .map(
+              (original) =>
+                texts.find((text) => text.id === original.id) || original
+            )
+            .filter(Boolean)
+        : texts;
+  }
+}
 
 // 왼쪽 패널: 원본 텍스트 목록 업데이트
 function updateOriginalTextList(
@@ -82,6 +123,14 @@ function updateOriginalTextList(
 ) {
   console.log("📝 원본 텍스트 목록 업데이트, 개수:", texts.length);
   currentTexts = texts;
+
+  // 원본 순서 저장 (첫 번째 호출 시에만)
+  if (
+    originalTextsOrder.length === 0 ||
+    originalTextsOrder.length !== texts.length
+  ) {
+    originalTextsOrder = [...texts];
+  }
 
   if (!textListElement) {
     console.error("❌ textListElement가 없습니다!");
@@ -99,7 +148,11 @@ function updateOriginalTextList(
     return;
   }
 
-  const textItems = texts
+  // 현재 선택된 정렬 옵션에 따라 텍스트 정렬
+  const sortType = sortSelectElement?.value || "order";
+  const sortedTexts = sortTexts(texts, sortType);
+
+  const textItems = sortedTexts
     .map((text, index) => {
       const truncatedContent = text.content;
 
@@ -173,7 +226,20 @@ function updateUxWritingList(
     return;
   }
 
-  const uxItems = uxTexts
+  // 왼쪽 패널과 동일한 순서로 정렬
+  const sortType = sortSelectElement?.value || "order";
+  const sortedTexts = sortTexts(currentTexts, sortType);
+
+  // 정렬된 순서에 맞게 UX 텍스트 재배열
+  const sortedUxTexts = sortedTexts
+    .map((text) => uxTexts.find((ux) => ux.id === text.id))
+    .filter(Boolean) as Array<{
+    id: string;
+    content: string;
+    uxContent: string;
+  }>;
+
+  const uxItems = sortedUxTexts
     .map((text, index) => {
       const truncatedContent = text.uxContent;
 
@@ -285,6 +351,16 @@ languageSelectElement.addEventListener("change", () => {
   const hasTexts = currentTexts.length > 0;
   translateBtnElement.disabled = !hasLanguage || !hasTexts;
 });
+
+// 정렬 옵션 변경 이벤트
+if (sortSelectElement) {
+  sortSelectElement.addEventListener("change", () => {
+    console.log("🔄 정렬 옵션 변경:", sortSelectElement.value);
+    // 현재 텍스트 목록을 다시 렌더링
+    updateOriginalTextList(currentTexts);
+    updateUxWritingList(currentUxTexts);
+  });
+}
 
 // 새로고침 버튼 클릭 이벤트
 refreshBtnElement.addEventListener("click", () => {
