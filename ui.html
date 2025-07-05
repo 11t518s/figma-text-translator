@@ -218,6 +218,117 @@
         }
       }
 
+      .comparison-indicator {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: bold;
+        z-index: 10;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+
+      .comparison-indicator.same {
+        background: #10b981;
+        color: white;
+      }
+
+      .comparison-indicator.different {
+        background: #f59e0b;
+        color: white;
+      }
+
+      .comparison-indicator.generating {
+        background: #6b7280;
+        color: white;
+      }
+
+      .text-pair {
+        position: relative;
+      }
+
+      .text-pair::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 2px;
+        height: 20px;
+        background: #e5e7eb;
+        z-index: 5;
+      }
+
+      .comparison-status {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        z-index: 10;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .comparison-status.same {
+        border-color: #10b981;
+        color: #10b981;
+        background: #f0fdf4;
+      }
+
+      .comparison-status.different {
+        border-color: #f59e0b;
+        color: #f59e0b;
+        background: #fffbeb;
+      }
+
+      .comparison-status.generating {
+        border-color: #6b7280;
+        color: #6b7280;
+        background: #f9fafb;
+      }
+
+      .sort-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .sort-controls label {
+        font-size: 10px;
+        color: #6b7280;
+        margin-right: 8px;
+        white-space: nowrap;
+      }
+
+      .sort-controls select {
+        padding: 4px 8px;
+        font-size: 11px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        color: #374151;
+        background: white;
+      }
+
+      .sort-controls select:focus {
+        outline: none;
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+      }
+
       .ux-writing-list {
         background: #fefefe;
         border: 1px solid #e5e7eb;
@@ -440,22 +551,44 @@
                 flex-shrink: 0;
               "
             >
-              <div style="display: flex; gap: 20px; align-items: center">
-                <h2 style="color: #4f46e5">원본 텍스트</h2>
-                <select
-                  id="sortSelect"
-                  style="
-                    padding: 4px 8px;
-                    font-size: 11px;
-                    border: 1px solid #d1d5db;
-                    border-radius: 4px;
-                    color: #374151;
-                  "
-                >
-                  <option value="korean">ㄱㄴㄷ 순</option>
-                  <option value="order">노출된 순서대로</option>
-                </select>
-                <h2 style="color: #f59e0b">UX Writing</h2>
+              <div style="display: flex; gap: 20px; align-items: flex-start">
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <h2 style="color: #4f46e5; margin: 0">원본 텍스트</h2>
+                  <div style="display: flex; gap: 8px; align-items: center">
+                    <label
+                      style="
+                        font-size: 10px;
+                        color: #6b7280;
+                        white-space: nowrap;
+                      "
+                      >보기:</label
+                    >
+                    <select
+                      id="sortSelect"
+                      style="
+                        padding: 4px 8px;
+                        font-size: 11px;
+                        border: 1px solid #d1d5db;
+                        border-radius: 4px;
+                        color: #374151;
+                        min-width: 140px;
+                      "
+                    >
+                      <option value="korean-asc">
+                        텍스트 오름차순 (ㄱ→ㅎ)
+                      </option>
+                      <option value="korean-desc">
+                        텍스트 내림차순 (ㅎ→ㄱ)
+                      </option>
+                      <option value="different-first">
+                        변경된 텍스트 위로
+                      </option>
+                      <option value="same-first">변경된 텍스트 아래로</option>
+                      <option value="order">원래 순서대로</option>
+                    </select>
+                  </div>
+                </div>
+                <h2 style="color: #f59e0b; margin: 0">UX Writing</h2>
               </div>
               <div style="font-size: 11px; color: #6b7280">
                 클릭하여 텍스트 적용
@@ -564,18 +697,68 @@
         let supportedLanguages = {};
         let originalTextsOrder = [];
 
-        // 정렬 함수
-        function sortTexts(texts, sortType) {
+        // 정렬 및 필터 함수
+        function sortAndFilterTexts(texts, sortType) {
           const sortedTexts = [...texts];
 
+          // 비교 상태 정보 추가
+          const textsWithComparison = sortedTexts.map((text) => {
+            const uxText = currentUxTexts.find((ux) => ux.id === text.id);
+            const comparison = compareTexts(
+              text.content,
+              uxText ? uxText.uxContent : null,
+              !uxText || uxText.uxContent === "생성 중..."
+            );
+            return {
+              ...text,
+              comparison,
+            };
+          });
+
           switch (sortType) {
-            case "korean":
-              return sortedTexts.sort((a, b) => {
+            case "korean-asc":
+              return textsWithComparison.sort((a, b) => {
                 return a.content.localeCompare(b.content, "ko", {
                   sensitivity: "base",
                   numeric: true,
                   ignorePunctuation: true,
                 });
+              });
+            case "korean-desc":
+              return textsWithComparison.sort((a, b) => {
+                return b.content.localeCompare(a.content, "ko", {
+                  sensitivity: "base",
+                  numeric: true,
+                  ignorePunctuation: true,
+                });
+              });
+            case "different-first":
+              return textsWithComparison.sort((a, b) => {
+                if (
+                  a.comparison.status === "different" &&
+                  b.comparison.status !== "different"
+                )
+                  return -1;
+                if (
+                  a.comparison.status !== "different" &&
+                  b.comparison.status === "different"
+                )
+                  return 1;
+                return 0;
+              });
+            case "same-first":
+              return textsWithComparison.sort((a, b) => {
+                if (
+                  a.comparison.status === "same" &&
+                  b.comparison.status !== "same"
+                )
+                  return -1;
+                if (
+                  a.comparison.status !== "same" &&
+                  b.comparison.status === "same"
+                )
+                  return 1;
+                return 0;
               });
             case "order":
             default:
@@ -583,11 +766,41 @@
                 ? originalTextsOrder
                     .map(
                       (original) =>
-                        texts.find((text) => text.id === original.id) ||
-                        original
+                        textsWithComparison.find(
+                          (text) => text.id === original.id
+                        ) || original
                     )
                     .filter(Boolean)
-                : texts;
+                : textsWithComparison;
+          }
+        }
+
+        // 텍스트 비교 함수
+        function compareTexts(originalText, uxText, isGenerating = false) {
+          if (isGenerating || !uxText || uxText === "생성 중...") {
+            return {
+              status: "generating",
+              icon: "⏳",
+              title: "UX Writing 생성 중...",
+            };
+          }
+
+          // 텍스트 정규화 (공백 제거 후 비교)
+          const normalizedOriginal = originalText.trim().replace(/\s+/g, " ");
+          const normalizedUx = uxText.trim().replace(/\s+/g, " ");
+
+          if (normalizedOriginal === normalizedUx) {
+            return {
+              status: "same",
+              icon: "=",
+              title: "원본과 동일",
+            };
+          } else {
+            return {
+              status: "different",
+              icon: "≠",
+              title: "원본과 다름",
+            };
           }
         }
 
@@ -615,7 +828,7 @@
         const sortSelectElement = document.getElementById("sortSelect");
         if (sortSelectElement) {
           sortSelectElement.addEventListener("change", () => {
-            console.log("🔄 정렬 옵션 변경:", sortSelectElement.value);
+            console.log("🔄 보기 옵션 변경:", sortSelectElement.value);
             // 현재 텍스트 목록을 다시 렌더링
             updateTextPairs(currentTexts, currentUxTexts);
           });
@@ -849,12 +1062,12 @@
             return;
           }
 
-          // 현재 선택된 정렬 옵션에 따라 텍스트 정렬
+          // 현재 선택된 정렬/필터 옵션에 따라 텍스트 정렬
           const sortSelect = document.getElementById("sortSelect");
           const sortType = sortSelect ? sortSelect.value : "order";
-          const sortedTexts = sortTexts(texts, sortType);
+          const filteredTexts = sortAndFilterTexts(texts, sortType);
 
-          const textPairs = sortedTexts
+          const textPairs = filteredTexts
             .map((text, index) => {
               const uxText = uxTexts.find((ux) => ux.id === text.id);
 
@@ -865,6 +1078,13 @@
               const isOriginalActive =
                 text.isUxMode === false || text.isUxMode === undefined;
               const isUxActive = text.isUxMode === true;
+
+              // 텍스트 비교 결과
+              const comparison = compareTexts(
+                text.content,
+                uxText ? uxText.uxContent : null,
+                !uxText || truncatedUx === "생성 중..."
+              );
 
               return `
                 <div class="text-pair">
@@ -879,6 +1099,12 @@
                         : ""
                     }
                   </div>
+                  
+                  <div class="comparison-status ${comparison.status}" 
+                       title="${comparison.title}">
+                    ${comparison.icon}
+                  </div>
+                  
                   <div class="ux-item ${isUxActive ? "active" : ""}" data-id="${
                 text.id
               }" data-index="${index}" 
